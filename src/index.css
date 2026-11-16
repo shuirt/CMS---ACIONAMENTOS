@@ -1,0 +1,213 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Onest', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Onest', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Onest', ui-sans-serif, system-ui, sans-serif;
+
+  /* Vale Institutional Primary Greens */
+  --color-vale-green: #00807c;
+  --color-vale-green-deep: #005c59;
+  --color-vale-green-dark: #004744;
+  --color-vale-green-soft: #e7f4f3;
+  --color-vale-green-border: #b3dcd9;
+
+  /* Vale Institutional Gold / Amber */
+  --color-vale-gold: #eea722;
+  --color-vale-gold-deep: #965f04;
+  --color-vale-gold-soft: #fef6e3;
+  --color-vale-gold-border: #f3d085;
+
+  /* Vale Corporate Neutrals & Cool Mineral Surfaces */
+  --color-vale-gray: #77787b;
+  --color-vale-ink: #162229;
+  --color-vale-body: #3e4e57;
+  --color-vale-muted: #64737c;
+  --color-vale-canvas: #eaf0f2;
+  --color-vale-surface: #ffffff;
+  --color-vale-surface-alt: #f4f7f9;
+  --color-vale-surface-subtle: #eef3f5;
+  --color-vale-border: #d4dfe4;
+
+  /* Complementary Mineral Blue & Slate Secondary Palette */
+  --color-mineral-blue: #1f6e9c;
+  --color-mineral-blue-deep: #154f73;
+  --color-mineral-blue-soft: #ebf4fa;
+  --color-mineral-blue-border: #b6d6ea;
+  --color-slate-blue: #4e6b7c;
+  --color-slate-blue-soft: #eef3f6;
+  --color-mineral-earth: #8c6239;
+  --color-mineral-earth-soft: #f7f3ee;
+  --color-crimson-muted: #b94a48;
+  --color-crimson-soft: #fcefef;
+  --color-crimson-border: #ecc4c3;
+
+  /* Backward-compatible petroleum scale mapped to Vale greens */
+  --color-petroleum-50: #e7f4f3;
+  --color-petroleum-100: #cde9e7;
+  --color-petroleum-200: #a4d7d4;
+  --color-petroleum-500: #0f9488;
+  --color-petroleum-600: #00807c;
+  --color-petroleum-700: #006562;
+  --color-petroleum-800: #005451;
+  --color-petroleum-900: #003e3c;
+}
+
+@layer base {
+  html {
+    transition: background-color 0.2s cubic-bezier(0.2, 0, 0, 1), color 0.2s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: #eaf0f2;
+    color: #162229;
+    font-family: 'Onest', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+
+  html.dark,
+  html.dark body {
+    background-color: #0d151a;
+    color: #f1f5f8;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: 'Onest', ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  button,
+  input,
+  select,
+  textarea,
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: inherit;
+  }
+
+  input[type='text'],
+  input[type='search'],
+  input[type='time'],
+  input[type='date'],
+  select,
+  textarea {
+    transition:
+      border-color 0.15s ease-in-out,
+      box-shadow 0.15s ease-in-out,
+      background-color 0.15s ease-in-out;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 128, 124, 0.16);
+    border-color: #00807c;
+  }
+
+  html.dark input:focus,
+  html.dark select:focus,
+  html.dark textarea:focus {
+    box-shadow: 0 0 0 3px rgba(0, 163, 158, 0.28);
+    border-color: #00a39e;
+  }
+
+  /* Custom subtle dark scrollbars for operation centers */
+  html.dark ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  html.dark ::-webkit-scrollbar-track {
+    background: #0d151a;
+  }
+  html.dark ::-webkit-scrollbar-thumb {
+    background: #263640;
+    border-radius: 4px;
+  }
+  html.dark ::-webkit-scrollbar-thumb:hover {
+    background: #364b58;
+  }
+}
+
+.tabular-nums,
+.font-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Official Google Sign-In Material Button styling with dark mode support */
+.gsi-material-button {
+  user-select: none;
+  appearance: none;
+  background-color: #ffffff;
+  background-image: none;
+  border: 1px solid #c6d3d9;
+  border-radius: 14px;
+  box-sizing: border-box;
+  color: #162229;
+  cursor: pointer;
+  font-family: 'Onest', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  height: 44px;
+  letter-spacing: -0.01em;
+  outline: none;
+  overflow: hidden;
+  padding: 0 18px;
+  position: relative;
+  text-align: center;
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+  vertical-align: middle;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+html.dark .gsi-material-button {
+  background-color: #162229;
+  border-color: #2e424f;
+  color: #f1f5f8;
+}
+
+.gsi-material-button:hover:not(:disabled) {
+  background-color: #f4f7f9;
+  border-color: #00807c;
+  box-shadow: 0 2px 6px rgba(0, 92, 89, 0.09);
+}
+
+html.dark .gsi-material-button:hover:not(:disabled) {
+  background-color: #1c2b34;
+  border-color: #00a39e;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.gsi-material-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.gsi-material-button-content-wrapper {
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  height: 100%;
+  justify-content: center;
+  gap: 12px;
+}
+
+.gsi-material-button-icon {
+  height: 20px;
+  width: 20px;
+  min-width: 20px;
+}

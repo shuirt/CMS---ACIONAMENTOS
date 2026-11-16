@@ -1,0 +1,6 @@
+{
+  "name": "Central de Acionamentos — CMS",
+  "description": "Sistema de registro, consulta e gerenciamento de acionamentos operacionais do CMS — Centro de Monitoramento de Segurança.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

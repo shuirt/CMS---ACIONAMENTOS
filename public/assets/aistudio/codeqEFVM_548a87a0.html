@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Novo Acionamento - CMS Ferroviário</title>
+<!-- Inter Google Font -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS v3 with forms & container queries -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            petroleum: {
+              50: '#edfafa',
+              100: '#d1f2f0',
+              200: '#a7e4e1',
+              500: '#14b8a6',
+              600: '#00807c',
+              700: '#006e6a',
+              800: '#005b58',
+              900: '#034745',
+            },
+            surface: {
+              DEFAULT: '#ffffff',
+              muted: '#f8fafc',
+              canvas: '#f3f4f8',
+            }
+          },
+          boxShadow: {
+            card: '0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.03)',
+            input: '0 1px 2px 0 rgba(0, 0, 0, 0.03)',
+          }
+        }
+      }
+    }
+  </script>
+<!-- BEGIN: CustomStyles -->
+<style data-purpose="base-styling">
+    body {
+      background-color: #f3f4f8;
+      color: #1e293b;
+      -webkit-font-smoothing: antialiased;
+    }
+    input[type="text"], 
+    input[type="time"], 
+    input[type="date"], 
+    select, 
+    textarea {
+      transition: all 0.15s ease-in-out;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(0, 128, 124, 0.15);
+      border-color: #00807c !important;
+    }
+  </style>
+<style data-purpose="operational-indicators">
+    .status-dot-pulse {
+      animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.9); }
+    }
+  </style>
+<!-- END: CustomStyles -->
+</head>
+<body class="min-h-screen py-8 px-4 sm:px-6 lg:px-8 font-sans">
+<!-- BEGIN: MainContainer -->
+<div class="max-w-[1040px] mx-auto space-y-4">
+<!-- BEGIN: HeaderSection -->
+<header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2" data-purpose="page-header">
+<div>
+<!-- Breadcrumb navigation -->
+<nav aria-label="Breadcrumb" class="flex items-center text-xs font-medium text-slate-500 mb-1">
+<a class="inline-flex items-center hover:text-petroleum-600 transition-colors" href="#">
+<svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M10 19l-7-7m0 0l7-7m-7 7h18" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+</svg>
+            Voltar para Registros
+          </a>
+<span class="mx-2 text-slate-300">/</span>
+<span class="text-slate-600 font-semibold">Novo Registro</span>
+</nav>
+<!-- Main title -->
+<div class="flex items-baseline gap-2">
+<h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">Novo Acionamento</h1>
+<span class="text-xs text-slate-400 font-normal">Monitoramento &amp; Segurança Operacional</span>
+</div>
+</div>
+<!-- User Identification Badge -->
+<div class="flex items-center self-start sm:self-auto bg-white border border-slate-200/80 shadow-sm rounded-full py-1.5 px-3.5 gap-2.5 text-xs text-slate-700" data-purpose="operator-badge">
+<span class="relative flex h-2 w-2">
+<span class="status-dot-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+</span>
+<div class="flex items-center gap-1.5">
+<svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7 7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span class="font-medium text-slate-800" id="current-operator-name">Carlos E. Mendes</span>
+<span class="text-slate-400 text-[11px]" id="current-operator-role">(Operador CMS)</span>
+</div>
+<div class="h-3 w-px bg-slate-200"></div>
+<button class="text-petroleum-600 hover:text-petroleum-800 font-semibold text-xs hover:underline cursor-pointer focus:outline-none" id="btn-alterar-operador" type="button">
+          Alterar
+        </button>
+</div>
+</header>
+<!-- END: HeaderSection -->
+<!-- BEGIN: MainOperationalFormCard -->
+<main class="bg-white rounded-2xl border border-slate-200/90 shadow-card p-6 sm:p-8" data-purpose="form-card">
+<form class="space-y-7" id="form-novo-acionamento" onsubmit="event.preventDefault();">
+<!-- ========================================== -->
+<!-- SEÇÃO 1: QUEM ACIONOU & DATAS E HORÁRIOS   -->
+<!-- ========================================== -->
+<!-- BEGIN: Section1_SolicitanteEHorarios -->
+<section aria-labelledby="sec1-title" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+<!-- Coluna Esquerda: Quem Acionou -->
+<div class="lg:col-span-5 space-y-2">
+<label class="block text-xs font-bold tracking-wider text-slate-700 uppercase" for="input-acionador" id="sec1-title">
+              QUEM ACIONOU <span class="text-petroleum-600 font-bold">*</span>
+</label>
+<div class="relative">
+<input class="w-full text-sm font-medium text-slate-800 bg-white border border-slate-200 rounded-lg px-3.5 py-2.5 shadow-input focus:border-petroleum-600 focus:ring-0" id="input-acionador" placeholder="Ex: Jocimar (CCE), Ana (CCM)..." type="text" value="Jocimar (CCE)"/>
+</div>
+<!-- Chips de Atalho -->
+<div class="flex flex-wrap items-center gap-1.5 pt-0.5" data-purpose="caller-shortcuts" id="container-atalhos">
+<span class="text-[11px] font-medium text-slate-400 mr-0.5">Atalhos:</span>
+<button class="shortcut-btn inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded bg-petroleum-600 text-white shadow-xs transition-colors" data-value="CCE" type="button">
+                CCE
+              </button>
+<button class="shortcut-btn inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors" data-value="CCS VLI" type="button">
+                CCS VLI
+              </button>
+<button class="shortcut-btn inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors" data-value="CPT" type="button">
+                CPT
+              </button>
+<button class="shortcut-btn inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors" data-value="CCM" type="button">
+                CCM
+              </button>
+<button class="shortcut-btn inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors" data-value="CPT PATIO TU" type="button">
+                CPT PATIO TU
+              </button>
+</div>
+</div>
+<!-- Coluna Direita: Datas e Horários (Sem Ambiguidade) -->
+<div class="lg:col-span-7 space-y-2">
+<div class="flex items-center justify-between">
+<span class="block text-xs font-bold tracking-wider text-slate-700 uppercase">
+                DATAS E HORÁRIOS <span class="text-petroleum-600 font-bold">*</span>
+</span>
+<span class="text-[10px] text-slate-400 font-medium tracking-tight">Cronologia: Acionamento → Equipe acionada → Chegada → Fim</span>
+</div>
+<!-- Grid de Data + 3 Marcos Operacionais -->
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+<!-- Data Ocorrência -->
+<div class="space-y-1">
+<div class="relative">
+<input aria-label="Data da ocorrência" class="w-full text-center text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg py-2.5 px-2 shadow-input" id="input-data" type="text" value="14/04/2025"/>
+</div>
+<div class="text-[10px] text-center font-medium text-slate-400">Data registro</div>
+</div>
+<!-- Horário AC (Acionamento) -->
+<div class="space-y-1">
+<div class="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2 py-2.5 shadow-input focus-within:border-petroleum-600">
+<span class="text-xs font-mono font-semibold text-slate-800">03:10</span>
+<span class="inline-flex items-center justify-center p-1 rounded bg-petroleum-50 text-petroleum-700 border border-petroleum-100" title="Acionamento"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.828a5 5 0 010-7.072m7.072 0a5 5 0 010 7.072M12 13a1 1 0 100-2 1 1 0 000 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg></span>
+</div>
+<div class="text-[10px] text-center font-medium text-slate-500 truncate" title="Acionamento">Acionamento</div>
+</div>
+<!-- Horário AC EQ (Acionamento da Equipe de Campo) -->
+<div class="space-y-1">
+<div class="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2 py-2.5 shadow-input focus-within:border-petroleum-600">
+<span class="text-xs font-mono font-semibold text-slate-800">03:11</span>
+<span class="inline-flex items-center justify-center p-1 rounded bg-teal-50/90 text-teal-700 border border-teal-200/80" title="Equipe acionada"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg></span>
+</div>
+<div class="text-[10px] text-center font-medium text-slate-500 truncate" title="Acionamento da Equipe de Campo">Equipe acionada</div>
+</div>
+<!-- Horário CH EQ (Chegada da Equipe em Campo) -->
+<div class="space-y-1">
+<div class="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2 py-2.5 shadow-input focus-within:border-petroleum-600">
+<span class="text-xs font-mono font-semibold text-slate-800">03:12</span>
+<span class="inline-flex items-center justify-center p-1 rounded bg-slate-100 text-slate-600 border border-slate-200" title="Chegada campo"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg></span>
+</div>
+<div class="text-[10px] text-center font-medium text-slate-500 truncate" title="Chegada em campo">Chegada campo</div>
+</div>
+<!-- Horário ENC (Encerramento / Normalização) -->
+<div class="space-y-1">
+<div class="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2 py-2.5 shadow-input focus-within:border-petroleum-600">
+<span class="text-xs font-mono font-semibold text-slate-800">04:23</span>
+<span class="inline-flex items-center justify-center p-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200" title="Normalizado"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg></span>
+</div>
+<div class="text-[10px] text-center font-medium text-slate-500 truncate" title="Encerramento">Normalizado</div>
+</div>
+</div>
+</div>
+</section>
+<!-- END: Section1_SolicitanteEHorarios -->
+<hr class="border-slate-100"/>
+<!-- ========================================== -->
+<!-- SEÇÃO 2: LOCALIDADE OPERACIONAL            -->
+<!-- ========================================== -->
+<!-- BEGIN: Section2_LocalidadeOperacional -->
+<section aria-labelledby="sec2-title" class="space-y-3.5">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+<label class="block text-xs font-bold tracking-wider text-slate-700 uppercase" id="sec2-title">
+              LOCALIDADE OPERACIONAL <span class="text-petroleum-600 font-bold">*</span>
+</label>
+<!-- Segmented Control: Tipo de Local -->
+<div class="inline-flex p-0.5 bg-slate-100 rounded-lg border border-slate-200/60 self-start sm:self-auto text-xs font-medium" data-purpose="location-type-toggle" id="location-segmented-toggle">
+<button class="location-toggle-btn px-3.5 py-1 rounded-md bg-white text-petroleum-700 font-semibold shadow-xs border border-slate-200/50 transition-all cursor-pointer" type="button">
+                Linha Férrea
+              </button>
+<button class="location-toggle-btn px-3.5 py-1 rounded-md text-slate-600 hover:text-slate-900 border border-transparent transition-all cursor-pointer" type="button">
+                Pátio
+              </button>
+<button class="location-toggle-btn px-3.5 py-1 rounded-md text-slate-600 hover:text-slate-900 border border-transparent transition-all cursor-pointer" type="button">
+                Estação
+              </button>
+</div>
+</div>
+<!-- Grid de 4 campos da Localidade -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+<!-- Campo 1: KM Ferroviário -->
+<div class="space-y-1.5">
+<label class="text-xs font-medium text-slate-500" for="km-input">KM Ferroviário</label>
+<input class="w-full text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-3 py-2.5 shadow-input" id="km-input" type="text" value="KM 1+133"/>
+</div>
+<!-- Campo 2: Housing / RH -->
+<div class="space-y-1.5">
+<label class="text-xs font-medium text-slate-500" for="housing-select">Housing / RH</label>
+<div class="relative">
+<select class="w-full appearance-none text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-3 py-2.5 pr-8 shadow-input" id="housing-select">
+<option selected="">EH01/03</option>
+<option>EH01/04</option>
+<option>EH02/01</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
+<svg class="h-4 w-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+</div>
+</div>
+<!-- Campo 3: Município -->
+<div class="space-y-1.5">
+<label class="text-xs font-medium text-slate-500" for="municipio-select">Município</label>
+<div class="relative">
+<select class="w-full appearance-none text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-3 py-2.5 pr-8 shadow-input" id="municipio-select">
+<option selected="">Cariacica (ES)</option>
+<option>Vitória (ES)</option>
+<option>Vila Velha (ES)</option>
+<option>Serra (ES)</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
+<svg class="h-4 w-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+</div>
+</div>
+<!-- Campo 4: Analista responsável -->
+<div class="space-y-1.5">
+<label class="text-xs font-medium text-slate-500" for="analista-select">Analista responsável</label>
+<div class="relative">
+<select class="w-full appearance-none text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-3 py-2.5 pr-8 shadow-input" id="analista-select">
+<option selected="">Anderson Pilon</option>
+<option>Carlos Mendes</option>
+<option>Mariana Duarte</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
+<svg class="h-4 w-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- END: Section2_LocalidadeOperacional -->
+<hr class="border-slate-100"/>
+<!-- ========================================== -->
+<!-- SEÇÃO 3: DESCRIÇÃO E CRONOLOGIA           -->
+<!-- ========================================== -->
+<!-- BEGIN: Section3_DescricaoECronologia -->
+<section aria-labelledby="sec3-title" class="space-y-3.5">
+<div class="flex items-center justify-between">
+<label class="block text-xs font-bold tracking-wider text-slate-700 uppercase" for="textarea-cronologia" id="sec3-title">
+              DESCRIÇÃO E CRONOLOGIA <span class="text-petroleum-600 font-bold">*</span>
+</label>
+<span class="text-[11px] font-mono font-medium text-slate-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded transition-colors" id="char-counter">
+              394 caracteres
+            </span>
+</div>
+<!-- Textarea com histórico cronológico -->
+<div>
+<textarea class="w-full text-xs leading-relaxed font-sans text-slate-800 bg-white border border-slate-200 rounded-xl p-3.5 shadow-input focus:border-petroleum-600 focus:ring-0 resize-y" id="textarea-cronologia" rows="6">03:10 - O CCE solicitou apoio no km 1+133 na EH01/03 devido falha de PN inoperante, sem previsão da E.E no local
+03:11 - Seg. Emp. já estava ciente e está prestando apoio no local.
+03:12 as 03:30 - A equipe da Seg. Emp. esteve na PN, realizando apoio para a circulação do W342 em segurança.
+04:10 - EE chega no local (Equipe eletroeletrônica Geuvani Vitali, Genilson, Rosângela)
+04:23 - PN volta ao normal.</textarea>
+</div>
+<!-- Sub-bloco tático de tecnologia e checagens operacionais -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-4 pt-1 items-end" data-purpose="tactical-checks">
+<!-- Tecnologia Empregada (Radio buttons) -->
+<div class="md:col-span-3 space-y-2">
+<span class="block text-xs font-medium text-slate-600">Tecnologia empregada?</span>
+<div class="flex items-center space-x-4 bg-slate-50/70 border border-slate-200/80 rounded-lg px-3 py-2">
+<label class="inline-flex items-center cursor-pointer">
+<input checked="" class="h-4 w-4 text-petroleum-600 border-slate-300 focus:ring-petroleum-600" id="tech-sim" name="tech-employed" type="radio" value="sim"/>
+<span class="ml-2 text-xs font-semibold text-slate-800">SIM</span>
+</label>
+<label class="inline-flex items-center cursor-pointer">
+<input class="h-4 w-4 text-petroleum-600 border-slate-300 focus:ring-petroleum-600" id="tech-nao" name="tech-employed" type="radio" value="nao"/>
+<span class="ml-2 text-xs font-medium text-slate-600">NÃO</span>
+</label>
+</div>
+</div>
+<!-- Dropdown Qual? -->
+<div class="md:col-span-3 space-y-2" id="tech-select-container">
+<span class="block text-xs font-medium text-slate-600">Qual?</span>
+<div class="relative">
+<select class="w-full appearance-none text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-3 py-2 pr-8 shadow-input transition-opacity" id="tech-select">
+<option selected="">Câmera (TA)</option>
+<option>Drone Vigilância</option>
+<option>Sensor Fibra</option>
+<option>Radar Perimetral</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
+<svg class="h-4 w-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+</div>
+</div>
+<!-- Checkboxes / Pílulas de Ações Envolvidas -->
+<div class="md:col-span-6 space-y-2">
+<span class="block text-xs font-medium text-slate-600">Marque as opções envolvidas</span>
+<div class="flex flex-wrap items-center gap-2" id="opcoes-envolvidas-container">
+<!-- Opção 1: Houve abordagem -->
+<button class="action-check-btn inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer" data-selected="false" type="button">
+<span class="check-icon hidden mr-1.5"><svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path></svg></span>
+                  Houve abordagem
+                </button>
+<!-- Opção 2: Envolvimento do Analista -->
+<button class="action-check-btn inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer" data-selected="false" type="button">
+<span class="check-icon hidden mr-1.5"><svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path></svg></span>
+                  Envolvimento do Analista
+                </button>
+<!-- Opção 3: Apuração de imagens (SELECIONADO) -->
+<button class="action-check-btn inline-flex items-center px-3.5 py-1.5 rounded-lg border border-petroleum-600 bg-petroleum-600 text-xs font-semibold text-white shadow-xs transition-all cursor-pointer" data-selected="true" type="button">
+<span class="check-icon inline mr-1.5"><svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path></svg></span>
+                  Apuração de imagens
+                </button>
+</div>
+</div>
+</div>
+</section>
+<!-- END: Section3_DescricaoECronologia -->
+<hr class="border-slate-100"/>
+<!-- ========================================== -->
+<!-- SEÇÃO 4: DETALHES ESSENCIAIS               -->
+<!-- ========================================== -->
+<!-- BEGIN: Section4_DetalhesEssenciais -->
+<section aria-labelledby="sec4-title" class="space-y-3.5">
+<label class="block text-xs font-bold tracking-wider text-slate-700 uppercase" id="sec4-title">
+            DETALHES ESSENCIAIS
+          </label>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+<!-- Campo 1: Equipe de Campo -->
+<div class="space-y-1.5">
+<label class="text-xs font-medium text-slate-500" for="equipe-campo">
+                Equipe de Campo / Atendido por <span class="text-petroleum-600 font-bold">*</span>
+</label>
+<input class="w-full text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-3 py-2.5 shadow-input" id="equipe-campo" type="text" value="Vigilante Santiago"/>
+</div>
+<!-- Campo 2: Material / Ativos envolvidos -->
+<div class="space-y-1.5">
+<label class="text-xs font-medium text-slate-500" for="ativos-select">Material / Ativos envolvidos</label>
+<div class="relative">
+<select class="w-full appearance-none text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-3 py-2.5 pr-8 shadow-input" id="ativos-select">
+<option selected="">PN inoperante</option>
+<option>Cabo de Sinalização rompido</option>
+<option>Chave de AMV danificada</option>
+<option>Semáforo apagado</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
+<svg class="h-4 w-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+</div>
+</div>
+<!-- Campo 3: Tipificação -->
+<div class="space-y-1.5">
+<label class="text-xs font-medium text-slate-500" for="tipificacao-select">Tipificação</label>
+<div class="relative">
+<select class="w-full appearance-none text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-3 py-2.5 pr-8 shadow-input" id="tipificacao-select">
+<option selected="">Atendimento de Segurança</option>
+<option>Falha Operacional</option>
+<option>Interferência Externa</option>
+<option>Manutenção Emergencial</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
+<svg class="h-4 w-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+</div>
+</div>
+<!-- Campo 4: INC (Incidente) -->
+<div class="space-y-1.5">
+<label class="text-xs font-medium text-slate-500" for="inc-input">
+                INC <span class="text-petroleum-600 font-bold">*</span>
+</label>
+<div class="relative">
+<input class="w-full font-mono text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-3 py-2.5 shadow-input tracking-tight" id="inc-input" type="text" value="INC2026015966"/>
+</div>
+</div>
+</div>
+</section>
+<!-- END: Section4_DetalhesEssenciais -->
+<hr class="border-slate-100"/>
+<!-- ========================================== -->
+<!-- SEÇÃO 5: STATUS OPERACIONAL & SEQUENCIAL   -->
+<!-- ========================================== -->
+<!-- BEGIN: Section5_StatusOperacional -->
+<section aria-labelledby="sec5-title" class="space-y-3.5">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+<label class="block text-xs font-bold tracking-wider text-slate-700 uppercase" id="sec5-title">
+              STATUS OPERACIONAL <span class="text-petroleum-600 font-bold">*</span>
+</label>
+<!-- Badge sequencial do relatório -->
+<div class="inline-flex items-center text-xs font-semibold text-teal-800 bg-teal-50/90 border border-teal-200/80 rounded-full px-3 py-0.5 self-start sm:self-auto shadow-xs transition-all" data-purpose="sequential-badge" id="report-seq-badge">
+<span class="font-normal text-teal-700 mr-1">Sequencial:</span>
+<span class="font-bold">REPORT #329</span>
+<span class="text-teal-600 font-normal ml-1.5 text-[11px]">(último: 328)</span>
+</div>
+</div>
+<!-- Grid de botões segmentados de status -->
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2" data-purpose="status-selector" id="status-selector-grid">
+<button class="status-btn w-full py-2.5 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer" data-status="Encerrado" type="button">
+              Encerrado
+            </button>
+<button class="status-btn w-full py-2.5 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer" data-status="Sem atendimento" type="button">
+              Sem atendimento
+            </button>
+<button class="status-btn w-full py-2.5 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer" data-status="Cancelado" type="button">
+              Cancelado
+            </button>
+<button class="status-btn w-full py-2.5 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer" data-status="Informação" type="button">
+              Informação
+            </button>
+<button class="status-btn w-full py-2.5 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer" data-status="Em andamento" type="button">
+              Em andamento
+            </button>
+<!-- Status Selecionado: Report -->
+<button class="status-btn active-status w-full py-2.5 px-3 rounded-lg border border-petroleum-600 bg-petroleum-600 text-xs font-semibold text-white shadow-xs flex items-center justify-center gap-1.5 ring-2 ring-petroleum-600/20 transition-all cursor-pointer" data-status="Report" type="button">
+<svg class="status-check-icon w-4 h-4 text-white" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span class="status-label">Report</span>
+</button>
+</div>
+</section>
+<!-- END: Section5_StatusOperacional -->
+</form>
+</main>
+<!-- END: MainOperationalFormCard -->
+<!-- BEGIN: FooterActionToolbar -->
+<footer class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-start gap-4 pt-2 px-1" data-purpose="form-actions-toolbar">
+<!-- Botão Secundário: Cancelar -->
+<button class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 transition-colors focus:outline-none cursor-pointer" id="btn-cancelar" type="button">
+        Cancelar
+      </button>
+<!-- Botão Primário: Salvar Acionamento -->
+<button class="inline-flex items-center justify-center px-6 py-2.5 rounded-lg text-sm font-semibold text-white bg-petroleum-600 hover:bg-petroleum-700 active:bg-petroleum-800 shadow-md hover:shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-petroleum-600 cursor-pointer" form="form-novo-acionamento" id="btn-salvar" type="submit">
+<svg class="w-4 h-4 mr-2 text-white" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+</svg>
+        Salvar acionamento
+      </button>
+<!-- Dica tática / atalho de teclado -->
+<span class="text-xs text-slate-400 font-medium sm:ml-auto hidden sm:inline-block">
+        Dica: use <kbd class="px-1.5 py-0.5 text-[10px] font-mono font-semibold text-slate-500 bg-white border border-slate-300 rounded shadow-2xs">Ctrl</kbd> + <kbd class="px-1.5 py-0.5 text-[10px] font-mono font-semibold text-slate-500 bg-white border border-slate-300 rounded shadow-2xs">Enter</kbd> para salvar
+      </span>
+</footer>
+<!-- END: FooterActionToolbar -->
+</div>
+<!-- END: MainContainer -->
+<!-- Floating Toast Container -->
+<div class="fixed bottom-6 right-6 z-50 pointer-events-none" id="toast-container"></div>
+<!-- BEGIN: InteractiveHandlers -->
+<script data-purpose="full-interactive-prototype">
+  document.addEventListener('DOMContentLoaded', () => {
+    // Utility: Toast notification
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const isSuccess = type === 'success';
+      const isInfo = type === 'info';
+      const isWarning = type === 'warning';
+      
+      const bgClass = isSuccess ? 'bg-petroleum-800 text-white border-petroleum-600' :
+                      isWarning ? 'bg-amber-800 text-white border-amber-600' :
+                      'bg-slate-800 text-white border-slate-700';
+
+      toast.className = `flex items-center gap-3 px-4 py-3 rounded-xl border shadow-xl text-xs sm:text-sm font-medium transition-all duration-300 transform translate-y-4 opacity-0 pointer-events-auto ${bgClass}`;
+      
+      const icon = isSuccess ? `
+        <span class="p-1 bg-petroleum-600 rounded-full inline-flex items-center justify-center">
+          <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+          </svg>
+        </span>
+      ` : isWarning ? `
+        <span class="p-1 bg-amber-600 rounded-full inline-flex items-center justify-center">
+          <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+        </span>
+      ` : `
+        <span class="p-1 bg-slate-600 rounded-full inline-flex items-center justify-center">
+          <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </span>
+      `;
+
+      toast.innerHTML = `
+        ${icon}
+        <span>${message}</span>
+      `;
+      
+      container.appendChild(toast);
+      
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-4', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-4', 'opacity-0');
+        setTimeout(() => toast.remove(), 320);
+      }, 3400);
+    }
+
+    // 1. Operador CMS: Alternar / Alterar
+    const btnAlterarOperador = document.getElementById('btn-alterar-operador');
+    const operatorNameElem = document.getElementById('current-operator-name');
+    const testOperators = [
+      'Carlos E. Mendes',
+      'Mariana Duarte',
+      'Renato Siqueira',
+      'Juliana V. Castro'
+    ];
+    let operatorIdx = 0;
+
+    btnAlterarOperador?.addEventListener('click', () => {
+      operatorIdx = (operatorIdx + 1) % testOperators.length;
+      const nextOp = testOperators[operatorIdx];
+      operatorNameElem.textContent = nextOp;
+      showToast(`Operador CMS alterado para ${nextOp}`, 'info');
+    });
+
+    // 2. Atalhos de "QUEM ACIONOU"
+    const inputAcionador = document.getElementById('input-acionador');
+    const shortcutBtns = document.querySelectorAll('.shortcut-btn');
+
+    shortcutBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.getAttribute('data-value');
+        if (inputAcionador) {
+          inputAcionador.value = val;
+          inputAcionador.focus();
+        }
+        
+        // Atualiza estilo do botão ativo
+        shortcutBtns.forEach(b => {
+          b.className = 'shortcut-btn inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors cursor-pointer';
+        });
+        btn.className = 'shortcut-btn inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded bg-petroleum-600 text-white shadow-xs transition-colors cursor-pointer';
+      });
+    });
+
+    // 3. Segmented control de Localidade Operacional
+    const locationBtns = document.querySelectorAll('.location-toggle-btn');
+    locationBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        locationBtns.forEach(b => {
+          b.className = 'location-toggle-btn px-3.5 py-1 rounded-md text-slate-600 hover:text-slate-900 border border-transparent transition-all cursor-pointer';
+        });
+        btn.className = 'location-toggle-btn px-3.5 py-1 rounded-md bg-white text-petroleum-700 font-semibold shadow-xs border border-slate-200/50 transition-all cursor-pointer';
+      });
+    });
+
+    // 4. Caráter contador da Descrição
+    const textarea = document.getElementById('textarea-cronologia');
+    const charCounter = document.getElementById('char-counter');
+
+    function updateCounter() {
+      if (textarea && charCounter) {
+        const len = textarea.value.length;
+        charCounter.textContent = `${len} caracteres`;
+      }
+    }
+    textarea?.addEventListener('input', updateCounter);
+    updateCounter();
+
+    // 5. Tecnologia Empregada: SIM / NÃO
+    const radioSim = document.getElementById('tech-sim');
+    const radioNao = document.getElementById('tech-nao');
+    const techSelectContainer = document.getElementById('tech-select-container');
+    const techSelect = document.getElementById('tech-select');
+
+    function syncTechState() {
+      if (radioNao && radioNao.checked) {
+        if (techSelect) {
+          techSelect.disabled = true;
+          techSelectContainer.classList.add('opacity-40');
+        }
+      } else {
+        if (techSelect) {
+          techSelect.disabled = false;
+          techSelectContainer.classList.remove('opacity-40');
+        }
+      }
+    }
+
+    radioSim?.addEventListener('change', syncTechState);
+    radioNao?.addEventListener('change', syncTechState);
+    syncTechState();
+
+    // 6. Marque as opções envolvidas: Multi-toggle
+    const actionCheckBtns = document.querySelectorAll('.action-check-btn');
+    actionCheckBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const isSelected = btn.getAttribute('data-selected') === 'true';
+        const newSelected = !isSelected;
+        btn.setAttribute('data-selected', String(newSelected));
+
+        const icon = btn.querySelector('.check-icon');
+        if (newSelected) {
+          btn.className = 'action-check-btn inline-flex items-center px-3.5 py-1.5 rounded-lg border border-petroleum-600 bg-petroleum-600 text-xs font-semibold text-white shadow-xs transition-all cursor-pointer';
+          if (icon) icon.classList.remove('hidden');
+        } else {
+          btn.className = 'action-check-btn inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer';
+          if (icon) icon.classList.add('hidden');
+        }
+      });
+    });
+
+    // 7. Status Operacional (Single select)
+    const statusBtns = document.querySelectorAll('.status-btn');
+    const reportBadge = document.getElementById('report-seq-badge');
+
+    statusBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const status = btn.getAttribute('data-status');
+        
+        statusBtns.forEach(b => {
+          b.classList.remove('active-status', 'border-petroleum-600', 'bg-petroleum-600', 'text-white', 'shadow-xs', 'ring-2', 'ring-petroleum-600/20', 'font-semibold');
+          b.classList.add('border-slate-200', 'bg-white', 'text-slate-600', 'font-medium', 'hover:border-slate-300', 'hover:bg-slate-50');
+          const checkIcon = b.querySelector('.status-check-icon');
+          if (checkIcon) checkIcon.remove();
+        });
+
+        btn.classList.remove('border-slate-200', 'bg-white', 'text-slate-600', 'hover:border-slate-300', 'hover:bg-slate-50');
+        btn.classList.add('active-status', 'border-petroleum-600', 'bg-petroleum-600', 'text-white', 'shadow-xs', 'ring-2', 'ring-petroleum-600/20', 'font-semibold');
+
+        // Adiciona ícone de check se não existir
+        if (!btn.querySelector('.status-check-icon')) {
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.setAttribute('class', 'status-check-icon w-4 h-4 text-white');
+          svg.setAttribute('fill', 'none');
+          svg.setAttribute('stroke', 'currentColor');
+          svg.setAttribute('viewBox', '0 0 24 24');
+          svg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>';
+          btn.insertBefore(svg, btn.firstChild);
+        }
+
+        // Destaca ou atenua badge sequencial
+        if (status === 'Report') {
+          reportBadge?.classList.remove('opacity-40');
+          reportBadge?.classList.add('ring-2', 'ring-teal-400/40');
+        } else {
+          reportBadge?.classList.remove('ring-2', 'ring-teal-400/40');
+          reportBadge?.classList.add('opacity-40');
+        }
+      });
+    });
+
+    // 8. Salvar / Validação
+    function submitAction() {
+      const caller = inputAcionador ? inputAcionador.value.trim() : '';
+      const team = document.getElementById('equipe-campo')?.value.trim();
+      const inc = document.getElementById('inc-input')?.value.trim();
+
+      if (!caller || !team || !inc) {
+        showToast('Por favor, preencha os campos obrigatórios (*)', 'warning');
+        return;
+      }
+
+      const primaryBtn = document.getElementById('btn-salvar');
+      if (primaryBtn) {
+        primaryBtn.classList.add('ring-4', 'ring-petroleum-500/50');
+        setTimeout(() => primaryBtn.classList.remove('ring-4', 'ring-petroleum-500/50'), 400);
+      }
+
+      showToast('Acionamento operacional salvo com sucesso no CMS!', 'success');
+    }
+
+    // Submit listener
+    document.getElementById('form-novo-acionamento')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      submitAction();
+    });
+
+    document.getElementById('btn-salvar')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      submitAction();
+    });
+
+    // 9. Cancelar
+    document.getElementById('btn-cancelar')?.addEventListener('click', () => {
+      showToast('Edição descartada. Valores mantidos.', 'info');
+    });
+
+    // 10. Tecla de atalho global Ctrl + Enter
+    document.addEventListener('keydown', function(event) {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault();
+        submitAction();
+      }
+    });
+  });
+</script>
+<!-- END: InteractiveHandlers -->
+</body></html>
