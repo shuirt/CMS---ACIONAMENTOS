@@ -210,7 +210,7 @@ export function buildCatalogFromOptions(options: ConfigOption[]): ConfigCatalog 
 
   const pick = (grupo: ConfigOption['grupo'], fb: string[]) => {
     const items = activeSorted(grupo);
-    return items.length > 0 ? items : fb;
+    return options.some((opt) => opt.grupo === grupo) ? items : fb;
   };
 
   return {

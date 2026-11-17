@@ -2,13 +2,13 @@ import { FileSpreadsheet, LogOut, User } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { OperatorIdentity } from '../types/acionamento';
 
-export type NavSection = 'registros' | 'iniciativas' | 'historico' | 'protocolos';
+export type NavSection = 'registros' | 'iniciativas' | 'historico' | 'reports' | 'configuracoes';
 
 interface HeaderProps {
   activeNav: NavSection;
   onNavigate: (section: NavSection) => void;
   operator: OperatorIdentity;
-  pendingReportsCount?: number;
+  reportsCount?: number;
   spreadsheetId?: string;
   onOpenSpreadsheetSetup?: () => void;
   onSignOut: () => void;
@@ -18,7 +18,7 @@ export function Header({
   activeNav,
   onNavigate,
   operator,
-  pendingReportsCount = 0,
+  reportsCount = 0,
   spreadsheetId,
   onOpenSpreadsheetSetup,
   onSignOut,
@@ -27,7 +27,8 @@ export function Header({
     { id: 'registros', label: 'Registros' },
     { id: 'iniciativas', label: 'Iniciativas' },
     { id: 'historico', label: 'Histórico' },
-    { id: 'protocolos', label: 'Protocolos' },
+    { id: 'reports', label: 'Reports' },
+    { id: 'configuracoes', label: 'Cadastros' },
   ];
 
   return (
@@ -62,7 +63,7 @@ export function Header({
                 className="w-2.5 h-2.5 rounded-full bg-[#EEA722] ring-2 ring-[#EEA722]/30 shrink-0"
                 aria-hidden="true"
               />
-              <span className="text-[16px] text-white font-semibold tracking-[-0.02em] whitespace-nowrap">
+              <span className="text-[16px] text-white font-semibold tracking-[-0.01em] whitespace-nowrap">
                 Acionamentos
               </span>
               <span className="px-2 py-0.5 rounded-lg bg-white/12 border border-white/20 text-[#FDE8BA] text-[11px] font-semibold tracking-[0.08em] whitespace-nowrap">
@@ -71,7 +72,7 @@ export function Header({
             </button>
 
             <nav
-              className="hidden sm:flex items-center gap-6 ml-4 h-14"
+              className="hidden lg:flex items-center gap-6 ml-4 h-14"
               aria-label="Navegação principal"
             >
               {navItems.map((item) => {
@@ -90,11 +91,11 @@ export function Header({
                   >
                     <span className="inline-flex items-center gap-1.5">
                       <span>{item.label}</span>
-                      {item.id === 'protocolos' && pendingReportsCount > 0 && (
+                      {item.id === 'reports' && reportsCount > 0 && (
                         <span
                           className="w-1.5 h-1.5 rounded-full bg-[#EEA722] ring-2 ring-[#EEA722]/30 shrink-0"
                           aria-hidden="true"
-                          title={`${pendingReportsCount} ocorrência(s) relevante(s) em Report`}
+                          title={`${reportsCount} Report(s) cadastrado(s)`}
                         />
                       )}
                     </span>
@@ -161,10 +162,10 @@ export function Header({
 
       {/* Mobile navigation strip */}
       <nav
-        className="flex sm:hidden items-center justify-between border-b border-[#d4dfe4] bg-[#f4f7f9] px-3 py-1.5"
+        className="flex lg:hidden items-center justify-start gap-1.5 overflow-x-auto border-b border-[#d4dfe4] bg-[#f4f7f9] px-3 py-1.5"
         aria-label="Navegação móvel"
       >
-        <div className="flex items-center gap-1.5">
+        <div className="flex min-w-max items-center gap-1.5">
           {navItems.map((item) => {
             const isActive = activeNav === item.id;
             return (

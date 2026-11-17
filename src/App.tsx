@@ -10,11 +10,14 @@ import { useAcionamentos } from './hooks/useAcionamentos';
 import { AcionamentoDetailPage } from './pages/AcionamentoDetailPage';
 import { AcionamentoFormPage } from './pages/AcionamentoFormPage';
 import { HistoricoPage } from './pages/HistoricoPage';
-import { ProtocolosPage } from './pages/ProtocolosPage';
+import { ReportsPage } from './pages/ReportsPage';
+import { ReportFormPage } from './pages/ReportFormPage';
+import { ReportDetailPage } from './pages/ReportDetailPage';
 import { RegistrosPage } from './pages/RegistrosPage';
 import { IniciativasPage } from './pages/IniciativasPage';
 import { IniciativaFormPage } from './pages/IniciativaFormPage';
 import { IniciativaDetailPage } from './pages/IniciativaDetailPage';
+import { ConfigPage } from './pages/ConfigPage';
 import {
   getInMemoryAccessToken,
   initGoogleAuth,
@@ -35,6 +38,8 @@ import type {
   Iniciativa,
   IniciativaInput,
   OperatorIdentity,
+  Report,
+  ReportInput,
   RegistrosDateFilter,
   RegistrosTab,
   StatusOperacional,
@@ -63,7 +68,10 @@ type ActiveView =
   | { type: 'edit'; recordId: string }
   | { type: 'iniciativa_create' }
   | { type: 'iniciativa_detail'; iniciativaId: string }
-  | { type: 'iniciativa_edit'; iniciativaId: string };
+  | { type: 'iniciativa_edit'; iniciativaId: string }
+  | { type: 'report_create' }
+  | { type: 'report_detail'; reportId: string }
+  | { type: 'report_edit'; reportId: string };
 
 export default function App() {
   const [operator, setOperator] = useState<OperatorIdentity | null>(() => {
@@ -184,6 +192,10 @@ export default function App() {
     updateAcionamento,
     createIniciativa,
     updateIniciativa,
+    createReport,
+    updateReport,
+    createConfigOption,
+    updateConfigOption,
   } = useAcionamentos(repository, operator, handleAuthExpired);
 
   const handleGoogleSignIn = async () => {
@@ -301,10 +313,21 @@ export default function App() {
     }
   };
 
-  const pendingReportsCount = useMemo(
-    () => workspace.acionamentos.filter((a) => a.statusOperacional === 'Report').length,
-    [workspace.acionamentos]
-  );
+  const handleSaveReport = async (
+    input: ReportInput,
+    existingReport?: Report | null
+  ) => {
+    if (existingReport) {
+      const updated = await updateReport(existingReport.id, input, existingReport.updatedAt);
+      notify(`Report #${updated.numeroReport} atualizado com sucesso.`, 'success');
+      setActiveView({ type: 'report_detail', reportId: updated.id });
+    } else {
+      const created = await createReport(input);
+      notify(`Report #${created.numeroReport} cadastrado com sucesso!`, 'success');
+      setActiveNav('reports');
+      setActiveView({ type: 'list' });
+    }
+  };
 
   if (!operator) {
     return (
@@ -330,6 +353,11 @@ export default function App() {
       ? workspace.iniciativas.find((i) => i.id === activeView.iniciativaId) ?? null
       : null;
 
+  const selectedReport =
+    activeView.type === 'report_detail' || activeView.type === 'report_edit'
+      ? workspace.reports.find((report) => report.id === activeView.reportId) ?? null
+      : null;
+
   const needsSpreadsheet = operator.mode === 'google' && !spreadsheetId;
   const headerOffsetClass =
     operator.mode === 'demo' ? 'pt-[144px] sm:pt-[90px]' : 'pt-[104px] sm:pt-[60px]';
@@ -344,17 +372,26 @@ export default function App() {
           ? `${activeView.type}:${activeView.iniciativaId}`
           : activeView.type === 'iniciativa_create'
             ? 'iniciativa_create'
-            : `list:${activeNav}`;
+            : activeView.type === 'report_detail' || activeView.type === 'report_edit'
+              ? `${activeView.type}:${activeView.reportId}`
+              : activeView.type === 'report_create'
+                ? 'report_create'
+                : `list:${activeNav}`;
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="min-h-screen flex flex-col bg-[#eaf0f2] dark:bg-[#0D151A] text-[#162229] dark:text-[#F1F5F8] transition-colors duration-200">
-      {activeView.type !== 'create' && activeView.type !== 'edit' && (
+      <div className="min-h-screen flex flex-col bg-[#eaf0f2] text-[#162229]">
+      {activeView.type !== 'create' &&
+        activeView.type !== 'edit' &&
+        activeView.type !== 'iniciativa_create' &&
+        activeView.type !== 'iniciativa_edit' &&
+        activeView.type !== 'report_create' &&
+        activeView.type !== 'report_edit' && (
         <Header
           activeNav={activeNav}
           onNavigate={handleNavigate}
           operator={operator}
-          pendingReportsCount={pendingReportsCount}
+          reportsCount={workspace.reports.length}
           spreadsheetId={spreadsheetId}
           onOpenSpreadsheetSetup={() => setShowSpreadsheetModal(true)}
           onSignOut={() => void handleSignOut()}
@@ -366,7 +403,9 @@ export default function App() {
           activeView.type === 'create' ||
           activeView.type === 'edit' ||
           activeView.type === 'iniciativa_create' ||
-          activeView.type === 'iniciativa_edit'
+          activeView.type === 'iniciativa_edit' ||
+          activeView.type === 'report_create' ||
+          activeView.type === 'report_edit'
             ? ''
             : headerOffsetClass
         }`}
@@ -379,27 +418,27 @@ export default function App() {
         >
         {needsSpreadsheet ? (
           <div className="max-w-lg mx-auto px-5 py-16">
-            <div className="bg-white dark:bg-[#162229] rounded-3xl border border-[#d4dfe4] dark:border-[#263640] shadow-[0_6px_24px_-4px_rgba(22,34,41,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.45)] overflow-hidden text-center">
+            <div className="bg-white rounded-3xl border border-[#d4dfe4] shadow-[0_6px_24px_-4px_rgba(22,34,41,0.08)] overflow-hidden text-center">
               <div className="h-[3px] flex" aria-hidden="true">
-                <div className="w-[74%] bg-[#00807C] dark:bg-[#00A39E]" />
-                <div className="w-[26%] bg-[#EEA722] dark:bg-[#FFBE3B]" />
+                <div className="w-[74%] bg-[#00807C]" />
+                <div className="w-[26%] bg-[#EEA722]" />
               </div>
               <div className="p-8 space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#E7F4F3] dark:bg-[#0A2E2C] border border-[#B3DCD9] dark:border-[#145754] text-[#005C59] dark:text-[#4DD4CF] flex items-center justify-center mx-auto">
+                <div className="w-12 h-12 rounded-2xl bg-[#E7F4F3] border border-[#B3DCD9] text-[#005C59] flex items-center justify-center mx-auto">
                   <FileSpreadsheet className="w-6 h-6" />
                 </div>
-                <h1 className="text-xl font-semibold text-[#162229] dark:text-[#F1F5F8]">
+                <h1 className="text-xl font-semibold text-[#162229]">
                   Conecte a Planilha do CMS
                 </h1>
-                <p className="text-sm text-[#3e4e57] dark:text-[#8D9FA9] leading-relaxed">
+                <p className="text-sm text-[#3e4e57] leading-relaxed">
                   Para iniciar o uso em produção, informe o ID de uma planilha Google Sheets
                   compartilhada ou crie uma nova planilha estruturada com as abas Acionamentos,
-                  Config e Auditoria.
+                  Config, Auditoria e Reports.
                 </p>
                 <button
                   type="button"
                   onClick={() => setShowSpreadsheetModal(true)}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-[#00807C] hover:bg-[#006562] dark:bg-[#009E99] dark:hover:bg-[#008B86] text-white text-sm font-semibold shadow-sm cursor-pointer transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-[#00807C] hover:bg-[#006562] text-white text-sm font-semibold shadow-sm cursor-pointer transition-colors"
                 >
                   <FileSpreadsheet className="w-4 h-4" />
                   <span>Configurar Planilha Google Sheets</span>
@@ -444,8 +483,8 @@ export default function App() {
             backLabel={
               returnNavAfterDetail === 'historico'
                 ? 'Voltar para Histórico'
-                : returnNavAfterDetail === 'protocolos'
-                  ? 'Voltar para Protocolos'
+                : returnNavAfterDetail === 'reports'
+                  ? 'Voltar para Reports'
                   : 'Voltar para Registros'
             }
             onBack={() => {
@@ -471,19 +510,15 @@ export default function App() {
             }}
             onNotify={notify}
           />
-        ) : activeNav === 'protocolos' ? (
-          <ProtocolosPage
-            acionamentos={workspace.acionamentos}
+        ) : activeNav === 'reports' && activeView.type === 'list' ? (
+          <ReportsPage
+            reports={workspace.reports}
             loading={loading}
             refreshing={refreshing}
-            lastReportNumber={workspace.lastReportNumber}
-            nextReportNumber={workspace.nextReportNumber}
+            error={error}
             onRefresh={() => void refresh(true)}
-            onNewReport={() => setActiveView({ type: 'create', defaultStatus: 'Report' })}
-            onSelectAcionamento={(item) => {
-              setReturnNavAfterDetail('protocolos');
-              setActiveView({ type: 'detail', recordId: item.id });
-            }}
+            onNewReport={() => setActiveView({ type: 'report_create' })}
+            onSelectReport={(report) => setActiveView({ type: 'report_detail', reportId: report.id })}
             onNotify={notify}
           />
         ) : activeNav === 'iniciativas' && activeView.type === 'list' ? (
@@ -532,6 +567,54 @@ export default function App() {
             onEdit={(item) => setActiveView({ type: 'iniciativa_edit', iniciativaId: item.id })}
             onNotify={notify}
           />
+        ) : activeView.type === 'report_create' ? (
+          <ReportFormPage
+            mode="create"
+            catalog={workspace.catalog}
+            operator={operator}
+            nextReportNumber={workspace.nextReportRecordNumber}
+            saving={saving}
+            onSave={handleSaveReport}
+            onCancel={() => {
+              setActiveNav('reports');
+              setActiveView({ type: 'list' });
+            }}
+            onNotify={notify}
+          />
+        ) : activeView.type === 'report_edit' && selectedReport ? (
+          <ReportFormPage
+            mode="edit"
+            initialRecord={selectedReport}
+            catalog={workspace.catalog}
+            operator={operator}
+            nextReportNumber={workspace.nextReportRecordNumber}
+            saving={saving}
+            onSave={handleSaveReport}
+            onCancel={() => setActiveView({ type: 'report_detail', reportId: selectedReport.id })}
+            onNotify={notify}
+          />
+        ) : activeView.type === 'report_detail' && selectedReport ? (
+          <ReportDetailPage
+            report={selectedReport}
+            onBack={() => {
+              setActiveNav('reports');
+              setActiveView({ type: 'list' });
+            }}
+            onEdit={(report) => setActiveView({ type: 'report_edit', reportId: report.id })}
+            onNotify={notify}
+          />
+        ) : activeNav === 'configuracoes' && activeView.type === 'list' ? (
+          <ConfigPage
+            options={workspace.configOptions}
+            loading={loading}
+            refreshing={refreshing}
+            saving={saving}
+            error={error}
+            onRefresh={() => void refresh(true)}
+            onCreate={createConfigOption}
+            onUpdate={updateConfigOption}
+            onNotify={notify}
+          />
         ) : (
           <RegistrosPage
             acionamentos={workspace.acionamentos}
@@ -565,7 +648,9 @@ export default function App() {
       {activeView.type !== 'create' &&
         activeView.type !== 'edit' &&
         activeView.type !== 'iniciativa_create' &&
-        activeView.type !== 'iniciativa_edit' && <Footer />}
+        activeView.type !== 'iniciativa_edit' &&
+        activeView.type !== 'report_create' &&
+        activeView.type !== 'report_edit' && <Footer />}
 
       {operator.mode === 'google' && accessToken && (
         <SpreadsheetSetupModal

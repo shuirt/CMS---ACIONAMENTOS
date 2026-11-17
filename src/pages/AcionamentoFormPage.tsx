@@ -107,7 +107,7 @@ function buildInitialInput(
     quemAcionou: '',
     tipoLocalidade: (catalog.tiposLocalidade[0] as TipoLocalidade) ?? 'Linha Férrea',
     kmFerroviario: '',
-    housingRh: catalog.housingsRh[0] ?? '',
+    housingRh: '',
     municipio: defaultEsMunicipios[0] ?? catalog.municipios[0] ?? '',
     analistaResponsavel: catalog.analistas[0] ?? '',
     descricaoCronologia: '',
@@ -136,6 +136,7 @@ const FIELD_ELEMENT_IDS: Partial<Record<keyof AcionamentoInput, string>> = {
   horarioEquipeAcionada: 'input-horario-equipe',
   horarioChegadaCampo: 'input-horario-chegada',
   horarioNormalizacao: 'input-horario-saida',
+  housingRh: 'housing-input',
   descricaoCronologia: 'textarea-cronologia',
   tecnologiaUtilizada: 'tech-select',
   equipeCampo: 'equipe-campo',
@@ -392,7 +393,6 @@ export function AcionamentoFormPage({
     }
   };
 
-  const housingOptions = withPreservedOption(catalog.housingsRh, form.housingRh);
   const ufMunicipios = filterMunicipiosByUf(catalog.municipios, selectedUf);
   const municipioOptions =
     form.municipio && inferUfFromMunicipio(form.municipio) === selectedUf
@@ -433,7 +433,7 @@ export function AcionamentoFormPage({
           </nav>
 
           <div className="flex flex-wrap items-baseline gap-2.5">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-[-0.025em] text-[#162229]">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-[-0.015em] text-[#162229]">
               {mode === 'edit' ? 'Editar Acionamento' : 'Novo Acionamento'}
             </h1>
             <span className="text-xs text-[#64737C] font-normal">
@@ -827,22 +827,17 @@ export function AcionamentoFormPage({
 
               {/* Housing / RH */}
               <div className="lg:col-span-2 space-y-1.5">
-                <label htmlFor="housing-select" className="text-xs font-medium text-[#52636d]">
+                <label htmlFor="housing-input" className="text-xs font-medium text-[#52636d]">
                   Housing / RH
                 </label>
-                <select
-                  id="housing-select"
+                <input
+                  id="housing-input"
+                  type="text"
                   value={form.housingRh}
                   onChange={(e) => updateField('housingRh', e.target.value)}
-                  className={FIELD_VARIANTS.select}
-                >
-                  <option value="">Selecione...</option>
-                  {housingOptions.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Digite o Housing / RH"
+                  className={FIELD_VARIANTS.input}
+                />
               </div>
 
               {/* Seletor Estado (ES / MG) */}
@@ -1284,33 +1279,8 @@ export function AcionamentoFormPage({
       </div>
 
       {/* Footer Action Toolbar */}
-      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-start gap-3 pt-1 px-1">
-        <button
-          type="button"
-          disabled={saving}
-          onClick={handleRequestCancel}
-          className={`${BUTTON_VARIANTS.ghost} px-5 py-2.5 text-sm`}
-        >
-          Cancelar
-        </button>
-
-        <button
-          type="submit"
-          form="form-acionamento"
-          disabled={saving}
-          className={`${BUTTON_VARIANTS.primary} px-6 py-2.5 text-sm shadow-sm`}
-        >
-          <Check className="w-4 h-4 text-white" />
-          <span>
-            {saving
-              ? 'Salvando...'
-              : mode === 'edit'
-                ? 'Salvar alterações'
-                : 'Salvar acionamento'}
-          </span>
-        </button>
-
-        <span className="text-xs text-[#64737C] font-medium sm:ml-auto hidden sm:inline-block">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-1 px-1">
+        <span className="text-xs text-[#64737C] font-medium sm:mr-auto hidden sm:inline-block">
           Dica: use{' '}
           <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-semibold text-[#3e4e57] bg-white border border-[#c8d5db] rounded-md shadow-2xs">
             Ctrl
@@ -1321,6 +1291,33 @@ export function AcionamentoFormPage({
           </kbd>{' '}
           para salvar
         </span>
+
+        <div className="flex justify-end gap-3">
+          <button
+            type="button"
+            disabled={saving}
+            onClick={handleRequestCancel}
+            className={`${BUTTON_VARIANTS.ghost} px-5 py-2.5 text-sm`}
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="submit"
+            form="form-acionamento"
+            disabled={saving}
+            className={`${BUTTON_VARIANTS.primary} px-6 py-2.5 text-sm shadow-sm`}
+          >
+            <Check className="w-4 h-4 text-white" />
+            <span>
+              {saving
+                ? 'Salvando...'
+                : mode === 'edit'
+                  ? 'Salvar alterações'
+                  : 'Salvar acionamento'}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Unsaved changes confirmation dialog */}

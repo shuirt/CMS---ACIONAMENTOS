@@ -181,7 +181,7 @@ export function HistoricoPage({
             <div className="space-y-3">
               <div className="flex flex-col gap-1">
                 <div className="flex items-start justify-between gap-2">
-                  <h1 className="text-[22px] sm:text-[24px] font-bold text-[#162229] tracking-[-0.03em]">
+                  <h1 className="text-[22px] sm:text-[24px] font-bold text-[#162229] tracking-[-0.015em]">
                     Histórico de Ocorrências
                   </h1>
                   <AnimatePresence initial={false}>

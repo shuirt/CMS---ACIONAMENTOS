@@ -4,6 +4,7 @@ import type {
   AuditoriaEntry,
   ConfigGrupo,
   ConfigOption,
+  Report,
   StatusOperacional,
   TipoLocalidade,
 } from '../src/types/acionamento';
@@ -12,6 +13,7 @@ export const SHEET_TABS = {
   ACIONAMENTOS: 'Acionamentos',
   CONFIG: 'Config',
   AUDITORIA: 'Auditoria',
+  REPORTS: 'Reports',
 } as const;
 
 export const ACIONAMENTOS_HEADERS = [
@@ -57,6 +59,26 @@ export const AUDITORIA_HEADERS = [
   'Usuário responsável',
   'E-mail do usuário',
   'Campos alterados',
+];
+
+export const REPORTS_HEADERS = [
+  'ID',
+  'Número do Report',
+  'INC',
+  'Descrição',
+  'Tipificação',
+  'Município',
+  'Tipo de localidade',
+  'KM ferroviário',
+  'Data de criação',
+  'Operador que criou',
+  'E-mail de quem criou',
+  'Data da última atualização',
+  'Operador que atualizou',
+  'E-mail de quem atualizou',
+  'Data',
+  'Horário',
+  'Analista responsável',
 ];
 
 export function serializeAcionamentoRow(item: Acionamento): string[] {
@@ -147,6 +169,54 @@ export function deserializeAcionamentoRow(row: string[]): Acionamento | null {
     updatedAt: (row[25] ?? '').trim(),
     updatedByName: (row[26] ?? '').trim(),
     updatedByEmail: (row[27] ?? '').trim(),
+  };
+}
+
+export function serializeReportRow(item: Report): string[] {
+  return [
+    item.id,
+    String(item.numeroReport),
+    item.inc,
+    item.descricao,
+    item.tipificacao,
+    item.municipio,
+    item.tipoLocalidade,
+    item.kmFerroviario,
+    item.createdAt,
+    item.createdByName,
+    item.createdByEmail,
+    item.updatedAt,
+    item.updatedByName,
+    item.updatedByEmail,
+    item.dataRegistro,
+    item.horario,
+    item.analistaResponsavel,
+  ];
+}
+
+export function deserializeReportRow(row: string[]): Report | null {
+  const id = (row[0] ?? '').trim();
+  const numeroReport = Number((row[1] ?? '').trim());
+  if (!id || !Number.isInteger(numeroReport) || numeroReport <= 0) return null;
+
+  return {
+    id,
+    numeroReport,
+    inc: (row[2] ?? '').trim(),
+    descricao: row[3] ?? '',
+    tipificacao: (row[4] ?? '').trim(),
+    municipio: (row[5] ?? '').trim(),
+    tipoLocalidade: ((row[6] ?? '').trim() || 'Linha Férrea') as TipoLocalidade,
+    kmFerroviario: (row[7] ?? '').trim(),
+    createdAt: (row[8] ?? '').trim(),
+    createdByName: (row[9] ?? '').trim(),
+    createdByEmail: (row[10] ?? '').trim(),
+    updatedAt: (row[11] ?? '').trim(),
+    updatedByName: (row[12] ?? '').trim(),
+    updatedByEmail: (row[13] ?? '').trim(),
+    dataRegistro: (row[14] ?? '').trim(),
+    horario: (row[15] ?? '').trim(),
+    analistaResponsavel: (row[16] ?? '').trim(),
   };
 }
 
@@ -325,6 +395,7 @@ export async function createCmsSpreadsheet(
         { properties: { title: SHEET_TABS.ACIONAMENTOS } },
         { properties: { title: SHEET_TABS.CONFIG } },
         { properties: { title: SHEET_TABS.AUDITORIA } },
+        { properties: { title: SHEET_TABS.REPORTS } },
       ],
     }),
   });
@@ -344,7 +415,12 @@ export async function ensureCmsSpreadsheetStructure(
 }> {
   const meta = await getSpreadsheetMetadata(spreadsheetId, accessToken);
   const existingTitles = new Set(meta.sheets.map((s) => s.properties.title));
-  const requiredTabs = [SHEET_TABS.ACIONAMENTOS, SHEET_TABS.CONFIG, SHEET_TABS.AUDITORIA];
+  const requiredTabs = [
+    SHEET_TABS.ACIONAMENTOS,
+    SHEET_TABS.CONFIG,
+    SHEET_TABS.AUDITORIA,
+    SHEET_TABS.REPORTS,
+  ];
   const missingTabs = requiredTabs.filter((t) => !existingTitles.has(t));
 
   if (missingTabs.length > 0) {
@@ -375,6 +451,7 @@ async function seedMissingHeadersAndConfig(
     `${SHEET_TABS.ACIONAMENTOS}!A1:AD1`,
     `${SHEET_TABS.CONFIG}!A1:E2`,
     `${SHEET_TABS.AUDITORIA}!A1:G1`,
+    `${SHEET_TABS.REPORTS}!A1:Q1`,
   ];
   const existing = await batchGetRanges(spreadsheetId, ranges, accessToken);
 
@@ -414,6 +491,11 @@ async function seedMissingHeadersAndConfig(
 
   if ((existing[ranges[2]]?.length ?? 0) === 0) {
     await updateRange(spreadsheetId, `${SHEET_TABS.AUDITORIA}!A1:G1`, [AUDITORIA_HEADERS], accessToken);
+  }
+
+  const existingReportsHeader = existing[ranges[3]]?.[0] ?? [];
+  if (JSON.stringify(existingReportsHeader) !== JSON.stringify(REPORTS_HEADERS)) {
+    await updateRange(spreadsheetId, `${SHEET_TABS.REPORTS}!A1:Q1`, [REPORTS_HEADERS], accessToken);
   }
 
   return seededConfig;

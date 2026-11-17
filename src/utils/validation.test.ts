@@ -17,6 +17,8 @@ import {
   formatDurationPT,
   formatLongDateBR,
   formatShortDayHeaderBR,
+  getNextAcionamentoReportNumber,
+  getNextReportRecordNumber,
   getRelativeDateRange,
   getUniqueFieldValues,
   getUniqueOperators,
@@ -29,7 +31,9 @@ import {
   sanitizeAcionamentoInput,
   sortAcionamentosAsc,
   sortAcionamentosDesc,
+  sanitizeReportInput,
   validateAcionamentoInput,
+  validateReportInput,
 } from './validation';
 import type { Acionamento, AcionamentoInput } from '../types/acionamento';
 
@@ -192,6 +196,63 @@ test('computeReportSequence never reuses used numbers and increments monotonical
   assert.deepEqual(computeReportSequence(records), {
     lastReportNumber: 104,
     nextReportNumber: 105,
+  });
+});
+
+test('Report records and Acionamentos share numbers by linking the next unmatched reference', () => {
+  const acionamentos = [{ numeroReport: 412 }, { numeroReport: 411 }, { numeroReport: null }];
+  const reports = [{ numeroReport: 412 }];
+
+  assert.equal(getNextReportRecordNumber(acionamentos, reports), 411);
+  assert.equal(getNextAcionamentoReportNumber(acionamentos, reports), 413);
+  assert.equal(getNextAcionamentoReportNumber([], [{ numeroReport: 27 }]), 27);
+  assert.equal(getNextReportRecordNumber([{ numeroReport: 28 }], []), 28);
+});
+
+test('Report input trims values and requires description, tipification, and municipality but allows missing INC', () => {
+  const input = sanitizeReportInput({
+    inc: ' INC2026910000 ',
+    dataRegistro: '2026-11-15',
+    horario: '17:20',
+    descricao: '  Acompanhamento do evento.  ',
+    tipificacao: ' Ação Preventiva ',
+    municipio: ' Vitória (ES) ',
+    tipoLocalidade: 'Estação',
+    kmFerroviario: ' KM 01+200 ',
+    analistaResponsavel: ' Analista A ',
+  });
+  assert.deepEqual(input, {
+    inc: 'INC2026910000',
+    dataRegistro: '2026-11-15',
+    horario: '17:20',
+    descricao: 'Acompanhamento do evento.',
+    tipificacao: 'Ação Preventiva',
+    municipio: 'Vitória (ES)',
+    tipoLocalidade: 'Estação',
+    kmFerroviario: 'KM 01+200',
+    analistaResponsavel: 'Analista A',
+  });
+  assert.deepEqual(validateReportInput({ ...input, inc: '' }), { valid: true, errors: {} });
+  assert.deepEqual(validateReportInput({
+    inc: '',
+    dataRegistro: '',
+    horario: '',
+    descricao: '',
+    tipificacao: '',
+    municipio: '',
+    tipoLocalidade: 'Linha Férrea',
+    kmFerroviario: '',
+    analistaResponsavel: '',
+  }), {
+    valid: false,
+    errors: {
+      dataRegistro: 'Informe a data.',
+      horario: 'Informe o horário.',
+      descricao: 'Informe a descrição do Report.',
+      tipificacao: 'Selecione a tipificação.',
+      municipio: 'Selecione o município.',
+      analistaResponsavel: 'Selecione o analista responsável.',
+    },
   });
 });
 

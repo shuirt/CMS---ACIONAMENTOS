@@ -5,6 +5,7 @@ import {
   ConflictError,
   GoogleSheetsAcionamentoRepository,
   NotFoundError,
+  ReportConflictError,
   ValidationError,
 } from './repository';
 import {
@@ -34,6 +35,14 @@ function handleApiError(res: Response, err: unknown): void {
     res.status(409).json({
       error: err.message,
       latestRecord: err.latestRecord,
+      code: 'CONFLICT_ERROR',
+    });
+    return;
+  }
+  if (err instanceof ReportConflictError) {
+    res.status(409).json({
+      error: err.message,
+      latestReport: err.latestReport,
       code: 'CONFLICT_ERROR',
     });
     return;
@@ -69,7 +78,7 @@ apiRouter.get('/auth/session', requireAuthorizedOperator, (req: Request, res: Re
   });
 });
 
-// Create a brand new 3-tab CMS spreadsheet
+// Create a brand new CMS spreadsheet
 apiRouter.post('/sheets/create', requireAuthorizedOperator, async (req: Request, res: Response) => {
   try {
     const title = typeof req.body?.title === 'string' && req.body.title.trim()
@@ -86,7 +95,7 @@ apiRouter.post('/sheets/create', requireAuthorizedOperator, async (req: Request,
   }
 });
 
-// Ensure existing spreadsheet has the 3 tabs + headers + initial Config
+// Ensure existing spreadsheet has the required tabs + headers + initial Config
 apiRouter.post('/sheets/bootstrap', requireAuthorizedOperator, async (req: Request, res: Response) => {
   try {
     const bodyId = typeof req.body?.spreadsheetId === 'string' ? req.body.spreadsheetId.trim() : '';
@@ -108,7 +117,7 @@ apiRouter.post('/sheets/bootstrap', requireAuthorizedOperator, async (req: Reque
   }
 });
 
-// Load workspace (Acionamentos + Config + Auditoria)
+// Load workspace data
 apiRouter.get('/workspace', requireAuthorizedOperator, async (req: Request, res: Response) => {
   try {
     const spreadsheetId = resolveSpreadsheetId(req);
@@ -167,6 +176,88 @@ apiRouter.put('/acionamentos/:id', requireAuthorizedOperator, async (req: Reques
     const repo = new GoogleSheetsAcionamentoRepository(spreadsheetId, req.operator!.accessToken);
     const result = await repo.updateAcionamento(id, req.body, expectedUpdatedAt, req.operator!);
     res.json(result);
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+apiRouter.post('/reports', requireAuthorizedOperator, async (req: Request, res: Response) => {
+  try {
+    const spreadsheetId = resolveSpreadsheetId(req);
+    if (!spreadsheetId) {
+      res.status(400).json({
+        error: 'Nenhuma planilha Google Sheets configurada.',
+        code: 'MISSING_SPREADSHEET_ID',
+      });
+      return;
+    }
+    const repo = new GoogleSheetsAcionamentoRepository(spreadsheetId, req.operator!.accessToken);
+    const result = await repo.createReport(req.body, req.operator!);
+    res.status(201).json(result);
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+apiRouter.put('/reports/:id', requireAuthorizedOperator, async (req: Request, res: Response) => {
+  try {
+    const spreadsheetId = resolveSpreadsheetId(req);
+    if (!spreadsheetId) {
+      res.status(400).json({
+        error: 'Nenhuma planilha Google Sheets configurada.',
+        code: 'MISSING_SPREADSHEET_ID',
+      });
+      return;
+    }
+    const id = String(req.params.id ?? '').trim();
+    if (!id) {
+      res.status(400).json({ error: 'ID do Report ausente.', code: 'MISSING_ID' });
+      return;
+    }
+    const expectedUpdatedAt =
+      typeof req.body?.expectedUpdatedAt === 'string' ? req.body.expectedUpdatedAt : '';
+    const repo = new GoogleSheetsAcionamentoRepository(spreadsheetId, req.operator!.accessToken);
+    const result = await repo.updateReport(id, req.body, expectedUpdatedAt, req.operator!);
+    res.json(result);
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+apiRouter.post('/config', requireAuthorizedOperator, async (req: Request, res: Response) => {
+  try {
+    const spreadsheetId = resolveSpreadsheetId(req);
+    if (!spreadsheetId) {
+      res.status(400).json({
+        error: 'Nenhuma planilha Google Sheets configurada.',
+        code: 'MISSING_SPREADSHEET_ID',
+      });
+      return;
+    }
+    const repo = new GoogleSheetsAcionamentoRepository(spreadsheetId, req.operator!.accessToken);
+    res.status(201).json(await repo.createConfigOption(req.body));
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+apiRouter.put('/config/:chave', requireAuthorizedOperator, async (req: Request, res: Response) => {
+  try {
+    const spreadsheetId = resolveSpreadsheetId(req);
+    if (!spreadsheetId) {
+      res.status(400).json({
+        error: 'Nenhuma planilha Google Sheets configurada.',
+        code: 'MISSING_SPREADSHEET_ID',
+      });
+      return;
+    }
+    const chave = String(req.params.chave ?? '').trim();
+    if (!chave) {
+      res.status(400).json({ error: 'Chave da opção ausente.', code: 'MISSING_KEY' });
+      return;
+    }
+    const repo = new GoogleSheetsAcionamentoRepository(spreadsheetId, req.operator!.accessToken);
+    res.json(await repo.updateConfigOption(chave, req.body));
   } catch (err) {
     handleApiError(res, err);
   }

@@ -70,7 +70,7 @@ export function AcionamentoListRow({
         >
           {/* 1. Título & REPORT */}
           <div className="flex flex-wrap sm:flex-nowrap items-baseline gap-x-2.5 gap-y-0.5 min-w-0">
-            <span className="text-[15.5px] sm:text-[16.5px] leading-[23px] text-[#162229] font-semibold tracking-[-0.015em] group-hover:text-[#005C59] transition-colors">
+            <span className="text-[15.5px] sm:text-[16.5px] leading-[23px] text-[#162229] font-semibold tracking-[-0.01em] group-hover:text-[#005C59] transition-colors">
               {title}
             </span>
             {item.numeroReport !== null && (

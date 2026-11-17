@@ -87,7 +87,7 @@ export function SpreadsheetSetupModal({
       setInputVal(created.spreadsheetId);
       setConfirmCreate(false);
       setStatusMsg(
-        `Nova planilha "${created.title}" criada com as 3 abas (Acionamentos, Config, Auditoria). ID: ${created.spreadsheetId}`
+        `Nova planilha "${created.title}" criada com as abas Acionamentos, Config, Auditoria e Reports. ID: ${created.spreadsheetId}`
       );
       onSelectSpreadsheet(created.spreadsheetId);
     } catch (err) {
@@ -121,7 +121,7 @@ export function SpreadsheetSetupModal({
                   Conectar Planilha Google Sheets
                 </h2>
                 <p className="text-xs text-[#64737C]">
-                  Base oficial compartilhada (abas Acionamentos, Config e Auditoria)
+                  Base oficial compartilhada (abas Acionamentos, Config, Auditoria e Reports)
                 </p>
               </div>
             </div>
@@ -139,7 +139,7 @@ export function SpreadsheetSetupModal({
             <div className="rounded-2xl bg-[#f4f7f9] border border-[#d4dfe4] p-3.5 text-xs text-[#3e4e57]">
               O servidor possui <code className="font-mono font-semibold">GOOGLE_SHEETS_SPREADSHEET_ID</code>{' '}
               fixado em ambiente (<span className="font-mono">{currentSpreadsheetId}</span>). Você
-              pode validar/inicializar as 3 abas abaixo.
+              pode validar/inicializar as abas abaixo.
             </div>
           )}
 
@@ -160,8 +160,8 @@ export function SpreadsheetSetupModal({
               className={`${FIELD_VARIANTS.input} text-xs font-mono disabled:bg-[#f4f7f9]`}
             />
             <p className="text-[11px] text-[#64737C]">
-              Ao validar, o sistema verifica automaticamente as abas Acionamentos, Config e Auditoria
-              e cria cabeçalhos faltantes sem apagar registros existentes.
+              Ao validar, o sistema verifica automaticamente as abas Acionamentos, Config, Auditoria
+              e Reports, criando cabeçalhos faltantes sem apagar registros existentes.
             </p>
           </div>
 

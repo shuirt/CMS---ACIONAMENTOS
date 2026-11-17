@@ -47,7 +47,7 @@ export function AuthGate({
                 CMS — Centro de Monitoramento de Segurança
               </span>
             </div>
-            <h1 className="text-2xl font-bold tracking-[-0.025em] text-white">
+            <h1 className="text-2xl font-bold tracking-[-0.015em] text-white">
               Central de Acionamentos
             </h1>
             <p className="text-xs sm:text-[13px] text-white/80 leading-relaxed">

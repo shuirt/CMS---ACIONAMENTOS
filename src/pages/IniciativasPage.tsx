@@ -116,7 +116,7 @@ export function IniciativasPage({
             {/* Title & Action */}
             <div className="space-y-3">
               <div className="flex flex-col gap-1">
-                <h1 className="text-[22px] sm:text-[24px] font-bold text-[#162229] tracking-[-0.03em]">
+                <h1 className="text-[22px] sm:text-[24px] font-bold text-[#162229] tracking-[-0.015em]">
                   Iniciativas CMS
                 </h1>
                 <p className="text-[13px] text-[#52636D]">

@@ -4,6 +4,8 @@ import type {
   IncFilter,
   Iniciativa,
   IniciativaInput,
+  Report,
+  ReportInput,
   RegistrosTab,
   ShiftConfig,
   StatusOperacional,
@@ -648,7 +650,47 @@ export function filterReportAcionamentos(
   });
 }
 
-export function computeReportSequence(items: Pick<Acionamento, 'numeroReport'>[]): {
+export function sanitizeReportInput(raw: Partial<ReportInput>): ReportInput {
+  return {
+    inc: (raw.inc ?? '').trim(),
+    dataRegistro: (raw.dataRegistro ?? '').trim(),
+    horario: (raw.horario ?? '').trim(),
+    descricao: (raw.descricao ?? '').trim(),
+    tipificacao: (raw.tipificacao ?? '').trim(),
+    municipio: (raw.municipio ?? '').trim(),
+    tipoLocalidade: (raw.tipoLocalidade ?? 'Linha Férrea') as TipoLocalidade,
+    kmFerroviario: (raw.kmFerroviario ?? '').trim(),
+    analistaResponsavel: (raw.analistaResponsavel ?? '').trim(),
+  };
+}
+
+export function validateReportInput(input: ReportInput): {
+  valid: boolean;
+  errors: ValidationErrors;
+} {
+  const errors: ValidationErrors = {};
+  if (!input.dataRegistro.trim()) {
+    errors.dataRegistro = 'Informe a data.';
+  } else if (!isValidIsoDate(input.dataRegistro.trim())) {
+    errors.dataRegistro = 'Data inválida (AAAA-MM-DD).';
+  }
+  if (!input.horario.trim()) {
+    errors.horario = 'Informe o horário.';
+  } else if (!isValidTime24h(input.horario.trim())) {
+    errors.horario = 'Horário inválido (HH:mm).';
+  }
+  if (!input.descricao.trim()) errors.descricao = 'Informe a descrição do Report.';
+  if (!input.tipificacao.trim()) errors.tipificacao = 'Selecione a tipificação.';
+  if (!input.municipio.trim()) errors.municipio = 'Selecione o município.';
+  if (!input.analistaResponsavel.trim()) {
+    errors.analistaResponsavel = 'Selecione o analista responsável.';
+  }
+  return { valid: Object.keys(errors).length === 0, errors };
+}
+
+export function computeReportSequence(
+  items: Array<Pick<Acionamento | Report, 'numeroReport'>>
+): {
   lastReportNumber: number;
   nextReportNumber: number;
 } {
@@ -666,6 +708,40 @@ export function computeReportSequence(items: Pick<Acionamento, 'numeroReport'>[]
     lastReportNumber: maxNum,
     nextReportNumber: maxNum + 1,
   };
+}
+
+export function getNextAcionamentoReportNumber(
+  acionamentos: Pick<Acionamento, 'numeroReport'>[],
+  reports: Pick<Report, 'numeroReport'>[]
+): number {
+  const referencedNumbers = new Set(
+    acionamentos.flatMap((item) => (item.numeroReport === null ? [] : [item.numeroReport]))
+  );
+  const availableReportNumber = reports
+    .map((item) => item.numeroReport)
+    .filter((number) => !referencedNumbers.has(number))
+    .sort((a, b) => a - b)[0];
+
+  if (availableReportNumber !== undefined) return availableReportNumber;
+  return computeReportSequence([...acionamentos, ...reports]).nextReportNumber;
+}
+
+export function getNextReportRecordNumber(
+  acionamentos: Pick<Acionamento, 'numeroReport'>[],
+  reports: Pick<Report, 'numeroReport'>[]
+): number {
+  const reportNumbers = new Set(reports.map((item) => item.numeroReport));
+  const unregisteredReferenceNumber = acionamentos
+    .flatMap((item) => (item.numeroReport === null ? [] : [item.numeroReport]))
+    .filter((number) => !reportNumbers.has(number))
+    .sort((a, b) => b - a)[0];
+
+  if (unregisteredReferenceNumber !== undefined) return unregisteredReferenceNumber;
+  return computeReportSequence([...acionamentos, ...reports]).nextReportNumber;
+}
+
+export function sortReportsDesc(items: Report[]): Report[] {
+  return [...items].sort((a, b) => b.numeroReport - a.numeroReport);
 }
 
 export function formatShiftLabel(shift: ShiftConfig): string {

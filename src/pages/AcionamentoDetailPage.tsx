@@ -120,7 +120,7 @@ export function AcionamentoDetailPage({
           </button>
 
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-[-0.025em] text-[#162229]">{title}</h1>
+            <h1 className="text-2xl font-bold tracking-[-0.015em] text-[#162229]">{title}</h1>
             {record.numeroReport !== null && (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-[#FEF6E3] text-[#8A5602] border border-[#F3D085]">
                 REPORT #{record.numeroReport}

@@ -1,11 +1,16 @@
 import { createDemoWorkspace } from '../data/demoData';
+import { buildCatalogFromOptions } from '../config/defaultCatalog';
 import type {
   Acionamento,
   AcionamentoInput,
   AuditoriaEntry,
+  ConfigOptionInput,
+  ConfigOptionUpdate,
   Iniciativa,
   IniciativaInput,
   OperatorIdentity,
+  Report,
+  ReportInput,
   ValidationErrors,
   WorkspaceSnapshot,
 } from '../types/acionamento';
@@ -13,12 +18,17 @@ import {
   computeIniciativaSequence,
   computeReportSequence,
   diffAcionamentoFields,
+  getNextAcionamentoReportNumber,
+  getNextReportRecordNumber,
   sanitizeAcionamentoInput,
   sanitizeIniciativaInput,
+  sanitizeReportInput,
   sortAcionamentosDesc,
   sortIniciativasDesc,
+  sortReportsDesc,
   validateAcionamentoInput,
   validateIniciativaInput,
+  validateReportInput,
 } from '../utils/validation';
 
 export class ClientApiError extends Error {
@@ -67,6 +77,21 @@ export interface IClientAcionamentoRepository {
     expectedUpdatedAt: string,
     operator: OperatorIdentity
   ): Promise<{ record: Iniciativa; workspace: WorkspaceSnapshot }>;
+  createReport(
+    input: ReportInput,
+    operator: OperatorIdentity
+  ): Promise<{ record: Report; workspace: WorkspaceSnapshot }>;
+  updateReport(
+    id: string,
+    input: ReportInput,
+    expectedUpdatedAt: string,
+    operator: OperatorIdentity
+  ): Promise<{ record: Report; workspace: WorkspaceSnapshot }>;
+  createConfigOption(input: ConfigOptionInput): Promise<{ workspace: WorkspaceSnapshot }>;
+  updateConfigOption(
+    chave: string,
+    input: ConfigOptionUpdate
+  ): Promise<{ workspace: WorkspaceSnapshot }>;
 }
 
 export class ApiSheetsRepository implements IClientAcionamentoRepository {
@@ -141,10 +166,7 @@ export class ApiSheetsRepository implements IClientAcionamentoRepository {
   }
 
   async getWorkspace(): Promise<WorkspaceSnapshot> {
-    return this.requestJson<WorkspaceSnapshot>('/api/workspace').catch(async () => {
-      const demo = new DemoAcionamentoRepository();
-      return demo.getWorkspace();
-    });
+    return this.requestJson<WorkspaceSnapshot>('/api/workspace');
   }
 
   async createAcionamento(
@@ -156,10 +178,7 @@ export class ApiSheetsRepository implements IClientAcionamentoRepository {
         method: 'POST',
         body: JSON.stringify(input),
       }
-    ).catch(async () => {
-      const demo = new DemoAcionamentoRepository();
-      return demo.createAcionamento(input, { name: 'Operador CMS', email: 'cms@local', mode: 'demo' });
-    });
+    );
   }
 
   async updateAcionamento(
@@ -173,15 +192,12 @@ export class ApiSheetsRepository implements IClientAcionamentoRepository {
         method: 'PUT',
         body: JSON.stringify({ ...input, expectedUpdatedAt }),
       }
-    ).catch(async () => {
-      const demo = new DemoAcionamentoRepository();
-      return demo.updateAcionamento(id, input, expectedUpdatedAt, { name: 'Operador CMS', email: 'cms@local', mode: 'demo' });
-    });
+    );
   }
 
   async createIniciativa(
     input: IniciativaInput,
-    operator: OperatorIdentity
+    _operator: OperatorIdentity
   ): Promise<{ record: Iniciativa; workspace: WorkspaceSnapshot }> {
     return this.requestJson<{ record: Iniciativa; workspace: WorkspaceSnapshot }>(
       '/api/iniciativas',
@@ -189,17 +205,14 @@ export class ApiSheetsRepository implements IClientAcionamentoRepository {
         method: 'POST',
         body: JSON.stringify(input),
       }
-    ).catch(async () => {
-      const demo = new DemoAcionamentoRepository();
-      return demo.createIniciativa(input, operator);
-    });
+    );
   }
 
   async updateIniciativa(
     id: string,
     input: IniciativaInput,
     expectedUpdatedAt: string,
-    operator: OperatorIdentity
+    _operator: OperatorIdentity
   ): Promise<{ record: Iniciativa; workspace: WorkspaceSnapshot }> {
     return this.requestJson<{ record: Iniciativa; workspace: WorkspaceSnapshot }>(
       `/api/iniciativas/${encodeURIComponent(id)}`,
@@ -207,10 +220,50 @@ export class ApiSheetsRepository implements IClientAcionamentoRepository {
         method: 'PUT',
         body: JSON.stringify({ ...input, expectedUpdatedAt }),
       }
-    ).catch(async () => {
-      const demo = new DemoAcionamentoRepository();
-      return demo.updateIniciativa(id, input, expectedUpdatedAt, operator);
+    );
+  }
+
+  async createReport(
+    input: ReportInput
+  ): Promise<{ record: Report; workspace: WorkspaceSnapshot }> {
+    return this.requestJson<{ record: Report; workspace: WorkspaceSnapshot }>('/api/reports', {
+      method: 'POST',
+      body: JSON.stringify(input),
     });
+  }
+
+  async updateReport(
+    id: string,
+    input: ReportInput,
+    expectedUpdatedAt: string
+  ): Promise<{ record: Report; workspace: WorkspaceSnapshot }> {
+    return this.requestJson<{ record: Report; workspace: WorkspaceSnapshot }>(
+      `/api/reports/${encodeURIComponent(id)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ ...input, expectedUpdatedAt }),
+      }
+    );
+  }
+
+  async createConfigOption(input: ConfigOptionInput): Promise<{ workspace: WorkspaceSnapshot }> {
+    return this.requestJson<{ workspace: WorkspaceSnapshot }>('/api/config', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async updateConfigOption(
+    chave: string,
+    input: ConfigOptionUpdate
+  ): Promise<{ workspace: WorkspaceSnapshot }> {
+    return this.requestJson<{ workspace: WorkspaceSnapshot }>(
+      `/api/config/${encodeURIComponent(chave)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(input),
+      }
+    );
   }
 }
 
@@ -339,7 +392,10 @@ export class DemoAcionamentoRepository implements IClientAcionamentoRepository {
       });
     }
 
-    const { nextReportNumber } = computeReportSequence(this.state.acionamentos);
+    const nextReportNumber = getNextAcionamentoReportNumber(
+      this.state.acionamentos,
+      this.state.reports
+    );
     const nowIso = new Date().toISOString();
     const numeroReport = sanitized.statusOperacional === 'Report' ? nextReportNumber : null;
 
@@ -369,14 +425,15 @@ export class DemoAcionamentoRepository implements IClientAcionamentoRepository {
     };
 
     const nextRecords = sortAcionamentosDesc([newRecord, ...this.state.acionamentos]);
-    const seq = computeReportSequence(nextRecords);
+    const seq = computeReportSequence([...nextRecords, ...this.state.reports]);
 
     this.state = {
       ...this.state,
       acionamentos: nextRecords,
       auditoria: [audit, ...this.state.auditoria],
       lastReportNumber: seq.lastReportNumber,
-      nextReportNumber: seq.nextReportNumber,
+      nextReportNumber: getNextAcionamentoReportNumber(nextRecords, this.state.reports),
+      nextReportRecordNumber: getNextReportRecordNumber(nextRecords, this.state.reports),
       syncedAt: nowIso,
     };
 
@@ -409,7 +466,10 @@ export class DemoAcionamentoRepository implements IClientAcionamentoRepository {
       });
     }
 
-    const { nextReportNumber } = computeReportSequence(this.state.acionamentos);
+    const nextReportNumber = getNextAcionamentoReportNumber(
+      this.state.acionamentos,
+      this.state.reports
+    );
     let numeroReport = existing.numeroReport;
     if (sanitized.statusOperacional === 'Report' && numeroReport === null) {
       numeroReport = nextReportNumber;
@@ -446,14 +506,15 @@ export class DemoAcionamentoRepository implements IClientAcionamentoRepository {
     const nextRecords = sortAcionamentosDesc(
       this.state.acionamentos.map((item) => (item.id === id ? updatedRecord : item))
     );
-    const seq = computeReportSequence(nextRecords);
+    const seq = computeReportSequence([...nextRecords, ...this.state.reports]);
 
     this.state = {
       ...this.state,
       acionamentos: nextRecords,
       auditoria: [audit, ...this.state.auditoria],
       lastReportNumber: seq.lastReportNumber,
-      nextReportNumber: seq.nextReportNumber,
+      nextReportNumber: getNextAcionamentoReportNumber(nextRecords, this.state.reports),
+      nextReportRecordNumber: getNextReportRecordNumber(nextRecords, this.state.reports),
       syncedAt: nowIso,
     };
 
@@ -554,5 +615,165 @@ export class DemoAcionamentoRepository implements IClientAcionamentoRepository {
     };
 
     return { record: updatedRecord, workspace: this.state };
+  }
+
+  async createReport(
+    rawInput: ReportInput,
+    operator: OperatorIdentity
+  ): Promise<{ record: Report; workspace: WorkspaceSnapshot }> {
+    const sanitized = sanitizeReportInput(rawInput);
+    const validation = validateReportInput(sanitized);
+    if (!validation.valid) {
+      throw new ClientApiError('Verifique os campos obrigatórios do Report.', 400, {
+        code: 'VALIDATION_ERROR',
+        fieldErrors: validation.errors,
+      });
+    }
+    const numeroReport = getNextReportRecordNumber(this.state.acionamentos, this.state.reports);
+    const nowIso = new Date().toISOString();
+    const newReport: Report = {
+      ...sanitized,
+      id: crypto.randomUUID(),
+      numeroReport,
+      createdAt: nowIso,
+      createdByName: operator.name,
+      createdByEmail: operator.email,
+      updatedAt: nowIso,
+      updatedByName: operator.name,
+      updatedByEmail: operator.email,
+    };
+    const reports = sortReportsDesc([...this.state.reports, newReport]);
+    const sequence = computeReportSequence([...this.state.acionamentos, ...reports]);
+    this.state = {
+      ...this.state,
+      reports,
+      lastReportNumber: sequence.lastReportNumber,
+      nextReportNumber: getNextAcionamentoReportNumber(this.state.acionamentos, reports),
+      nextReportRecordNumber: getNextReportRecordNumber(this.state.acionamentos, reports),
+      syncedAt: nowIso,
+    };
+    return { record: newReport, workspace: this.state };
+  }
+
+  async updateReport(
+    id: string,
+    rawInput: ReportInput,
+    expectedUpdatedAt: string,
+    operator: OperatorIdentity
+  ): Promise<{ record: Report; workspace: WorkspaceSnapshot }> {
+    const sanitized = sanitizeReportInput(rawInput);
+    const validation = validateReportInput(sanitized);
+    if (!validation.valid) {
+      throw new ClientApiError('Verifique os campos obrigatórios do Report.', 400, {
+        code: 'VALIDATION_ERROR',
+        fieldErrors: validation.errors,
+      });
+    }
+    const existing = this.state.reports.find((report) => report.id === id);
+    if (!existing) {
+      throw new ClientApiError('Report não encontrado.', 404, { code: 'NOT_FOUND' });
+    }
+    if (expectedUpdatedAt && existing.updatedAt !== expectedUpdatedAt) {
+      throw new ClientApiError('Report alterado por outro usuário.', 409, {
+        code: 'CONFLICT_ERROR',
+      });
+    }
+
+    const nowIso = new Date().toISOString();
+    const updatedReport: Report = {
+      ...sanitized,
+      id: existing.id,
+      numeroReport: existing.numeroReport,
+      createdAt: existing.createdAt,
+      createdByName: existing.createdByName,
+      createdByEmail: existing.createdByEmail,
+      updatedAt: nowIso,
+      updatedByName: operator.name,
+      updatedByEmail: operator.email,
+    };
+    const reports = sortReportsDesc(
+      this.state.reports.map((report) => (report.id === id ? updatedReport : report))
+    );
+    this.state = {
+      ...this.state,
+      reports,
+      syncedAt: nowIso,
+    };
+    return { record: updatedReport, workspace: this.state };
+  }
+
+  async createConfigOption(input: ConfigOptionInput): Promise<{ workspace: WorkspaceSnapshot }> {
+    const value = input.valor.trim();
+    if (!value) {
+      throw new ClientApiError('Informe o valor da opção.', 400, { code: 'VALIDATION_ERROR' });
+    }
+    if (
+      this.state.configOptions.some(
+        (option) =>
+          option.grupo === input.grupo && option.valor.toLocaleLowerCase() === value.toLocaleLowerCase()
+      )
+    ) {
+      throw new ClientApiError('Essa opção já existe nessa lista.', 409, { code: 'DUPLICATE_OPTION' });
+    }
+    const ordem =
+      Math.max(
+        0,
+        ...this.state.configOptions
+          .filter((option) => option.grupo === input.grupo)
+          .map((option) => option.ordem)
+      ) + 1;
+    this.state = {
+      ...this.state,
+      configOptions: [
+        ...this.state.configOptions,
+        { chave: crypto.randomUUID(), grupo: input.grupo, valor: value, ativo: true, ordem },
+      ],
+      syncedAt: new Date().toISOString(),
+    };
+    this.state.catalog = buildCatalogFromOptions(this.state.configOptions);
+    return { workspace: this.state };
+  }
+
+  async updateConfigOption(
+    chave: string,
+    input: ConfigOptionUpdate
+  ): Promise<{ workspace: WorkspaceSnapshot }> {
+    const current = this.state.configOptions.find((option) => option.chave === chave);
+    if (!current) {
+      throw new ClientApiError('Opção não encontrada.', 404, { code: 'NOT_FOUND' });
+    }
+    const value = input.valor.trim();
+    if (!value) {
+      throw new ClientApiError('Informe o valor da opção.', 400, { code: 'VALIDATION_ERROR' });
+    }
+    if (
+      !Number.isInteger(input.ordem) ||
+      input.ordem < 1
+    ) {
+      throw new ClientApiError('Revise o valor e a ordem da opção.', 400, {
+        code: 'VALIDATION_ERROR',
+      });
+    }
+    if (
+      this.state.configOptions.some(
+        (option) =>
+          option.chave !== chave &&
+          option.grupo === current.grupo &&
+          option.valor.toLocaleLowerCase() === value.toLocaleLowerCase()
+      )
+    ) {
+      throw new ClientApiError('Essa opção já existe nessa lista.', 409, { code: 'DUPLICATE_OPTION' });
+    }
+    this.state = {
+      ...this.state,
+      configOptions: this.state.configOptions.map((option) =>
+        option.chave === chave
+          ? { ...option, valor: value, ativo: input.ativo, ordem: input.ordem }
+          : option
+      ),
+      syncedAt: new Date().toISOString(),
+    };
+    this.state.catalog = buildCatalogFromOptions(this.state.configOptions);
+    return { workspace: this.state };
   }
 }

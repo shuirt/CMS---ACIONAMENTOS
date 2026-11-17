@@ -1,11 +1,9 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
-
 @theme {
-  --font-sans: 'Onest', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Onest', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'Onest', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Aptos', sans-serif;
+  --font-display: 'Aptos', sans-serif;
+  --font-mono: 'Aptos', sans-serif;
 
   /* Vale Institutional Primary Greens */
   --color-vale-green: #00807c;
@@ -56,32 +54,24 @@
 }
 
 @layer base {
-  html {
-    transition: background-color 0.2s cubic-bezier(0.2, 0, 0, 1), color 0.2s cubic-bezier(0.2, 0, 0, 1);
-  }
-
   html,
   body {
     margin: 0;
     padding: 0;
     background-color: #eaf0f2;
     color: #162229;
-    font-family: 'Onest', ui-sans-serif, system-ui, sans-serif;
+    font-family: 'Aptos', sans-serif;
     -webkit-font-smoothing: antialiased;
+    font-optical-sizing: auto;
+    font-kerning: normal;
     overscroll-behavior: none;
-  }
-
-  html.dark,
-  html.dark body {
-    background-color: #0d151a;
-    color: #f1f5f8;
   }
 
   h1,
   h2,
   h3 {
-    font-family: 'Onest', ui-sans-serif, system-ui, sans-serif;
-    letter-spacing: -0.02em;
+    font-family: 'Aptos', sans-serif;
+    letter-spacing: -0.015em;
   }
 
   button,
@@ -115,28 +105,6 @@
     border-color: #00807c;
   }
 
-  html.dark input:focus,
-  html.dark select:focus,
-  html.dark textarea:focus {
-    box-shadow: 0 0 0 3px rgba(0, 163, 158, 0.28);
-    border-color: #00a39e;
-  }
-
-  /* Custom subtle dark scrollbars for operation centers */
-  html.dark ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  html.dark ::-webkit-scrollbar-track {
-    background: #0d151a;
-  }
-  html.dark ::-webkit-scrollbar-thumb {
-    background: #263640;
-    border-radius: 4px;
-  }
-  html.dark ::-webkit-scrollbar-thumb:hover {
-    background: #364b58;
-  }
 }
 
 .tabular-nums,
@@ -144,7 +112,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Official Google Sign-In Material Button styling with dark mode support */
+/* Official Google Sign-In Material Button styling */
 .gsi-material-button {
   user-select: none;
   appearance: none;
@@ -155,11 +123,11 @@
   box-sizing: border-box;
   color: #162229;
   cursor: pointer;
-  font-family: 'Onest', sans-serif;
+  font-family: inherit;
   font-size: 14px;
   font-weight: 500;
   height: 44px;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   outline: none;
   overflow: hidden;
   padding: 0 18px;
@@ -173,22 +141,10 @@
   justify-content: center;
 }
 
-html.dark .gsi-material-button {
-  background-color: #162229;
-  border-color: #2e424f;
-  color: #f1f5f8;
-}
-
 .gsi-material-button:hover:not(:disabled) {
   background-color: #f4f7f9;
   border-color: #00807c;
   box-shadow: 0 2px 6px rgba(0, 92, 89, 0.09);
-}
-
-html.dark .gsi-material-button:hover:not(:disabled) {
-  background-color: #1c2b34;
-  border-color: #00a39e;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
 .gsi-material-button:disabled {

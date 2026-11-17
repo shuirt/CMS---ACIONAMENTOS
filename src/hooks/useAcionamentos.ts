@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
-import { DEFAULT_CATALOG } from '../config/defaultCatalog';
+import { DEFAULT_CATALOG, INITIAL_CONFIG_OPTIONS } from '../config/defaultCatalog';
 import type { IClientAcionamentoRepository } from '../services/repository';
 import { ClientApiError } from '../services/repository';
 import type {
   Acionamento,
   AcionamentoInput,
+  ConfigOptionInput,
+  ConfigOptionUpdate,
   Iniciativa,
   IniciativaInput,
   OperatorIdentity,
+  Report,
+  ReportInput,
   ShiftConfig,
   WorkspaceSnapshot,
 } from '../types/acionamento';
@@ -22,10 +26,13 @@ export function useAcionamentos(
   const [workspace, setWorkspace] = useState<WorkspaceSnapshot>({
     acionamentos: [],
     iniciativas: [],
+    reports: [],
+    configOptions: INITIAL_CONFIG_OPTIONS,
     catalog: DEFAULT_CATALOG,
     auditoria: [],
     lastReportNumber: 0,
     nextReportNumber: 1,
+    nextReportRecordNumber: 1,
     lastIniciativaNumber: 0,
     nextIniciativaNumber: 1,
     syncedAt: '',
@@ -157,6 +164,80 @@ export function useAcionamentos(
     [repository, operator]
   );
 
+  const createReport = useCallback(
+    async (input: ReportInput): Promise<Report> => {
+      if (!repository || !operator) {
+        throw new Error('Sessão de operador não disponível.');
+      }
+      setSaving(true);
+      try {
+        const res = await repository.createReport(input, operator);
+        setWorkspace(res.workspace);
+        setError(null);
+        return res.record;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [repository, operator]
+  );
+
+  const updateReport = useCallback(
+    async (
+      id: string,
+      input: ReportInput,
+      expectedUpdatedAt: string
+    ): Promise<Report> => {
+      if (!repository || !operator) {
+        throw new Error('Sessão de operador não disponível.');
+      }
+      setSaving(true);
+      try {
+        const res = await repository.updateReport(id, input, expectedUpdatedAt, operator);
+        setWorkspace(res.workspace);
+        setError(null);
+        return res.record;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [repository, operator]
+  );
+
+  const createConfigOption = useCallback(
+    async (input: ConfigOptionInput): Promise<void> => {
+      if (!repository) {
+        throw new Error('Sessão de operador não disponível.');
+      }
+      setSaving(true);
+      try {
+        const res = await repository.createConfigOption(input);
+        setWorkspace(res.workspace);
+        setError(null);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [repository]
+  );
+
+  const updateConfigOption = useCallback(
+    async (chave: string, input: ConfigOptionUpdate): Promise<void> => {
+      if (!repository) {
+        throw new Error('Sessão de operador não disponível.');
+      }
+      setSaving(true);
+      try {
+        const res = await repository.updateConfigOption(chave, input);
+        setWorkspace(res.workspace);
+        setError(null);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [repository]
+  );
+
   return {
     workspace,
     loading,
@@ -170,5 +251,9 @@ export function useAcionamentos(
     updateAcionamento,
     createIniciativa,
     updateIniciativa,
+    createReport,
+    updateReport,
+    createConfigOption,
+    updateConfigOption,
   };
 }

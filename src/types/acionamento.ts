@@ -86,6 +86,17 @@ export interface ConfigOption {
   ordem: number;
 }
 
+export interface ConfigOptionInput {
+  grupo: ConfigGrupo;
+  valor: string;
+}
+
+export interface ConfigOptionUpdate {
+  valor: string;
+  ativo: boolean;
+  ordem: number;
+}
+
 export interface ConfigCatalog {
   quemAcionouAtalhos: string[];
   tiposLocalidade: string[];
@@ -174,17 +185,54 @@ export interface IniciativaInput {
   inc: string;
 }
 
+export interface Report {
+  id: string;
+  numeroReport: number;
+  inc: string;
+  dataRegistro: string;
+  horario: string;
+  descricao: string;
+  tipificacao: string;
+  municipio: string;
+  tipoLocalidade: TipoLocalidade;
+  kmFerroviario: string;
+  analistaResponsavel: string;
+  createdAt: string;
+  createdByName: string;
+  createdByEmail: string;
+  updatedAt: string;
+  updatedByName: string;
+  updatedByEmail: string;
+}
+
+export interface ReportInput {
+  inc: string;
+  dataRegistro: string;
+  horario: string;
+  descricao: string;
+  tipificacao: string;
+  municipio: string;
+  tipoLocalidade: TipoLocalidade;
+  kmFerroviario: string;
+  analistaResponsavel: string;
+}
+
 export interface WorkspaceSnapshot {
   acionamentos: Acionamento[];
   iniciativas: Iniciativa[];
+  reports: Report[];
+  configOptions: ConfigOption[];
   catalog: ConfigCatalog;
   auditoria: AuditoriaEntry[];
   nextReportNumber: number;
+  nextReportRecordNumber: number;
   lastReportNumber: number;
   nextIniciativaNumber: number;
   lastIniciativaNumber: number;
   syncedAt: string;
 }
 
-export type ValidationErrors = Partial<Record<keyof AcionamentoInput | keyof IniciativaInput, string>>;
+export type ValidationErrors = Partial<
+  Record<keyof AcionamentoInput | keyof IniciativaInput | keyof ReportInput, string>
+>;
 
