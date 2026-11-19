@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { FileSpreadsheet } from 'lucide-react';
 import { MotionConfig, motion } from 'motion/react';
 import { AuthGate } from './components/AuthGate';
@@ -7,18 +7,6 @@ import { Header, type NavSection } from './components/Header';
 import { SpreadsheetSetupModal } from './components/SpreadsheetSetupModal';
 import { ToastContainer, type ToastMessage } from './components/ToastContainer';
 import { useAcionamentos } from './hooks/useAcionamentos';
-import { loadCsvDemoAcionamentos } from './data/csvDemoSeed';
-import { AcionamentoDetailPage } from './pages/AcionamentoDetailPage';
-import { AcionamentoFormPage } from './pages/AcionamentoFormPage';
-import { HistoricoPage } from './pages/HistoricoPage';
-import { ReportsPage } from './pages/ReportsPage';
-import { ReportFormPage } from './pages/ReportFormPage';
-import { ReportDetailPage } from './pages/ReportDetailPage';
-import { RegistrosPage } from './pages/RegistrosPage';
-import { IniciativasPage } from './pages/IniciativasPage';
-import { IniciativaFormPage } from './pages/IniciativaFormPage';
-import { IniciativaDetailPage } from './pages/IniciativaDetailPage';
-import { ConfigPage } from './pages/ConfigPage';
 import {
   getInMemoryAccessToken,
   initGoogleAuth,
@@ -45,6 +33,40 @@ import type {
   RegistrosTab,
   StatusOperacional,
 } from './types/acionamento';
+
+const AcionamentoDetailPage = lazy(() =>
+  import('./pages/AcionamentoDetailPage').then((m) => ({ default: m.AcionamentoDetailPage }))
+);
+const AcionamentoFormPage = lazy(() =>
+  import('./pages/AcionamentoFormPage').then((m) => ({ default: m.AcionamentoFormPage }))
+);
+const HistoricoPage = lazy(() =>
+  import('./pages/HistoricoPage').then((m) => ({ default: m.HistoricoPage }))
+);
+const ReportsPage = lazy(() =>
+  import('./pages/ReportsPage').then((m) => ({ default: m.ReportsPage }))
+);
+const ReportFormPage = lazy(() =>
+  import('./pages/ReportFormPage').then((m) => ({ default: m.ReportFormPage }))
+);
+const ReportDetailPage = lazy(() =>
+  import('./pages/ReportDetailPage').then((m) => ({ default: m.ReportDetailPage }))
+);
+const RegistrosPage = lazy(() =>
+  import('./pages/RegistrosPage').then((m) => ({ default: m.RegistrosPage }))
+);
+const IniciativasPage = lazy(() =>
+  import('./pages/IniciativasPage').then((m) => ({ default: m.IniciativasPage }))
+);
+const IniciativaFormPage = lazy(() =>
+  import('./pages/IniciativaFormPage').then((m) => ({ default: m.IniciativaFormPage }))
+);
+const IniciativaDetailPage = lazy(() =>
+  import('./pages/IniciativaDetailPage').then((m) => ({ default: m.IniciativaDetailPage }))
+);
+const ConfigPage = lazy(() =>
+  import('./pages/ConfigPage').then((m) => ({ default: m.ConfigPage }))
+);
 
 const DEFAULT_HISTORICO_FILTERS: HistoricoFilters = {
   dateFrom: '',
@@ -75,10 +97,6 @@ type ActiveView =
   | { type: 'report_edit'; reportId: string };
 
 export default function App() {
-  const searchParams = new URLSearchParams(window.location.search);
-  const csvTestDataRequested =
-    searchParams.get('demo') === '1' && searchParams.get('csvTestData') === '1';
-
   const [operator, setOperator] = useState<OperatorIdentity | null>(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('demo') === '1') {
@@ -102,8 +120,6 @@ export default function App() {
   const [activeView, setActiveView] = useState<ActiveView>({ type: 'list' });
   const [returnNavAfterDetail, setReturnNavAfterDetail] = useState<NavSection>('registros');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
-  const [csvDemoAcionamentos, setCsvDemoAcionamentos] = useState<Acionamento[]>([]);
-  const [csvDemoLoading, setCsvDemoLoading] = useState(csvTestDataRequested);
 
   // Preserved list filter states across detail/edit/create transitions
   const [registrosDateFilter, setRegistrosDateFilter] =
@@ -165,46 +181,10 @@ export default function App() {
     return unsubscribe;
   }, []);
 
-  useEffect(() => {
-    if (!csvTestDataRequested) return;
-    if (operator?.mode !== 'demo') {
-      setCsvDemoLoading(false);
-      return;
-    }
-
-    let active = true;
-    setCsvDemoLoading(true);
-    void loadCsvDemoAcionamentos()
-      .then((records) => {
-        if (!active) return;
-        setCsvDemoAcionamentos(records);
-        notify(`${records.length.toLocaleString('pt-BR')} registros do CSV carregados no modo demo.`, 'success');
-      })
-      .catch((err) => {
-        if (active) {
-          notify(
-            err instanceof Error
-              ? `Não foi possível carregar o CSV de demonstração: ${err.message}`
-              : 'Não foi possível carregar o CSV de demonstração.',
-            'error'
-          );
-        }
-      })
-      .finally(() => {
-        if (active) setCsvDemoLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [csvTestDataRequested, operator?.mode, notify]);
-
   const repository: IClientAcionamentoRepository | null = useMemo(() => {
     if (!operator) return null;
     if (operator.mode === 'demo') {
-      return new DemoAcionamentoRepository(
-        csvTestDataRequested ? csvDemoAcionamentos : []
-      );
+      return new DemoAcionamentoRepository();
     }
     if (!accessToken || !spreadsheetId) {
       return null;
@@ -213,7 +193,7 @@ export default function App() {
       () => getInMemoryAccessToken() ?? accessToken,
       () => spreadsheetId
     );
-  }, [operator, accessToken, spreadsheetId, csvTestDataRequested, csvDemoAcionamentos]);
+  }, [operator, accessToken, spreadsheetId]);
 
   const handleAuthExpired = useCallback(
     (msg: string) => {
@@ -460,6 +440,11 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
         >
+        <Suspense fallback={
+          <div className="min-h-[40vh] flex items-center justify-center text-sm text-[#647780]">
+            Carregando área do sistema...
+          </div>
+        }>
         {needsSpreadsheet ? (
           <div className="max-w-lg mx-auto px-5 py-16">
             <div className="bg-white rounded-3xl border border-[#d4dfe4] shadow-[0_6px_24px_-4px_rgba(22,34,41,0.08)] overflow-hidden text-center">
@@ -542,7 +527,7 @@ export default function App() {
           <HistoricoPage
             acionamentos={workspace.acionamentos}
             catalog={workspace.catalog}
-            loading={loading || csvDemoLoading}
+            loading={loading}
             refreshing={refreshing}
             filters={historicoFilters}
             onFiltersChange={setHistoricoFilters}
@@ -662,7 +647,7 @@ export default function App() {
         ) : (
           <RegistrosPage
             acionamentos={workspace.acionamentos}
-            loading={loading || csvDemoLoading}
+            loading={loading}
             refreshing={refreshing}
             error={error}
             syncedAt={workspace.syncedAt}
@@ -670,7 +655,6 @@ export default function App() {
             dateFilter={registrosDateFilter}
             onDateFilterChange={setRegistrosDateFilter}
             activeTab={registrosTab}
-            initialContinuousMode={csvTestDataRequested ? false : undefined}
             incFilter={registrosIncFilter}
             search={registrosSearch}
             operatorFilter={registrosOperator}
@@ -687,6 +671,7 @@ export default function App() {
             onNotify={notify}
           />
         )}
+        </Suspense>
         </motion.div>
       </main>
 

@@ -4,6 +4,7 @@ import { requireAuthorizedOperator } from './auth';
 import {
   ConflictError,
   GoogleSheetsAcionamentoRepository,
+  IniciativaConflictError,
   NotFoundError,
   ReportConflictError,
   ValidationError,
@@ -43,6 +44,13 @@ function handleApiError(res: Response, err: unknown): void {
     res.status(409).json({
       error: err.message,
       latestReport: err.latestReport,
+      code: 'CONFLICT_ERROR',
+    });
+    return;
+  }
+  if (err instanceof IniciativaConflictError) {
+    res.status(409).json({
+      error: err.message,
       code: 'CONFLICT_ERROR',
     });
     return;
@@ -219,6 +227,47 @@ apiRouter.put('/reports/:id', requireAuthorizedOperator, async (req: Request, re
     const repo = new GoogleSheetsAcionamentoRepository(spreadsheetId, req.operator!.accessToken);
     const result = await repo.updateReport(id, req.body, expectedUpdatedAt, req.operator!);
     res.json(result);
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+apiRouter.post('/iniciativas', requireAuthorizedOperator, async (req: Request, res: Response) => {
+  try {
+    const spreadsheetId = resolveSpreadsheetId(req);
+    if (!spreadsheetId) {
+      res.status(400).json({
+        error: 'Nenhuma planilha Google Sheets configurada.',
+        code: 'MISSING_SPREADSHEET_ID',
+      });
+      return;
+    }
+    const repo = new GoogleSheetsAcionamentoRepository(spreadsheetId, req.operator!.accessToken);
+    res.status(201).json(await repo.createIniciativa(req.body, req.operator!));
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+apiRouter.put('/iniciativas/:id', requireAuthorizedOperator, async (req: Request, res: Response) => {
+  try {
+    const spreadsheetId = resolveSpreadsheetId(req);
+    if (!spreadsheetId) {
+      res.status(400).json({
+        error: 'Nenhuma planilha Google Sheets configurada.',
+        code: 'MISSING_SPREADSHEET_ID',
+      });
+      return;
+    }
+    const id = String(req.params.id ?? '').trim();
+    if (!id) {
+      res.status(400).json({ error: 'ID da iniciativa ausente.', code: 'MISSING_ID' });
+      return;
+    }
+    const expectedUpdatedAt =
+      typeof req.body?.expectedUpdatedAt === 'string' ? req.body.expectedUpdatedAt : '';
+    const repo = new GoogleSheetsAcionamentoRepository(spreadsheetId, req.operator!.accessToken);
+    res.json(await repo.updateIniciativa(id, req.body, expectedUpdatedAt, req.operator!));
   } catch (err) {
     handleApiError(res, err);
   }

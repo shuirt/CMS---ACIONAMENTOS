@@ -4,18 +4,21 @@ import {
   ACIONAMENTOS_HEADERS,
   AUDITORIA_HEADERS,
   CONFIG_HEADERS,
+  INICIATIVAS_HEADERS,
   REPORTS_HEADERS,
   SHEET_TABS,
   deserializeAcionamentoRow,
   deserializeAuditoriaRow,
   deserializeConfigRow,
+  deserializeIniciativaRow,
   deserializeReportRow,
   serializeAcionamentoRow,
   serializeAuditoriaRow,
   serializeConfigRow,
+  serializeIniciativaRow,
   serializeReportRow,
 } from './sheetsClient';
-import type { Acionamento, AuditoriaEntry, ConfigOption, Report } from '../src/types/acionamento';
+import type { Acionamento, AuditoriaEntry, ConfigOption, Iniciativa, Report } from '../src/types/acionamento';
 
 test('Acionamento row serialization and deserialization round-trips losslessly', () => {
   const original: Acionamento = {
@@ -125,6 +128,32 @@ test('Report row serialization and deserialization round-trip and reject invalid
   assert.equal(row.length, REPORTS_HEADERS.length);
   assert.deepEqual(deserializeReportRow(row), report);
   assert.equal(deserializeReportRow(['report-invalid', '0']), null);
+});
+
+test('Iniciativa row serialization round-trips properly', () => {
+  const iniciativa: Iniciativa = {
+    id: 'iniciativa-1',
+    numeroIniciativa: 7,
+    dataRegistro: '2026-11-19',
+    horario: '18:30',
+    municipio: 'Vitória (ES)',
+    tipoLocalidade: 'Estação',
+    kmFerroviario: 'KM 12+300',
+    analistaResponsavel: 'Analista A',
+    descricao: 'Acompanhamento preventivo.',
+    tipificacao: 'Ação Preventiva',
+    inc: 'INC2026999007',
+    createdAt: '2026-11-19T18:30:00.000Z',
+    createdByName: 'Operador A',
+    createdByEmail: 'a@cms.com',
+    updatedAt: '2026-11-19T18:35:00.000Z',
+    updatedByName: 'Operador B',
+    updatedByEmail: 'b@cms.com',
+  };
+  const row = serializeIniciativaRow(iniciativa);
+  assert.equal(row.length, INICIATIVAS_HEADERS.length);
+  assert.deepEqual(deserializeIniciativaRow(row), iniciativa);
+  assert.equal(deserializeIniciativaRow(['iniciativa-invalid', '0']), null);
 });
 
 test('legacy Report rows keep their original columns after new fields are added', () => {

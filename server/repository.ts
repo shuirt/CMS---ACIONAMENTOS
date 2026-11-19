@@ -8,20 +8,26 @@ import type {
   ConfigOptionInput,
   ConfigOptionUpdate,
   ConfigOption,
+  Iniciativa,
+  IniciativaInput,
   Report,
   ReportInput,
   WorkspaceSnapshot,
 } from '../src/types/acionamento';
 import {
+  computeIniciativaSequence,
   computeReportSequence,
   diffAcionamentoFields,
   getNextAcionamentoReportNumber,
   getNextReportRecordNumber,
   sanitizeAcionamentoInput,
+  sanitizeIniciativaInput,
   sanitizeReportInput,
   sortAcionamentosDesc,
+  sortIniciativasDesc,
   sortReportsDesc,
   validateAcionamentoInput,
+  validateIniciativaInput,
   validateReportInput,
 } from '../src/utils/validation';
 import type { AuthenticatedOperator } from './auth';
@@ -31,10 +37,12 @@ import {
   deserializeAcionamentoRow,
   deserializeAuditoriaRow,
   deserializeConfigRow,
+  deserializeIniciativaRow,
   deserializeReportRow,
   ensureCmsSpreadsheetStructure,
   serializeAcionamentoRow,
   serializeAuditoriaRow,
+  serializeIniciativaRow,
   serializeReportRow,
   SHEET_TABS,
   updateRange,
@@ -66,6 +74,8 @@ export class ReportConflictError extends Error {
 
 export class NotFoundError extends Error {}
 
+export class IniciativaConflictError extends Error {}
+
 export interface AcionamentoRepository {
   getWorkspace(): Promise<WorkspaceSnapshot>;
   createAcionamento(
@@ -88,6 +98,16 @@ export interface AcionamentoRepository {
     expectedUpdatedAt: string,
     operator: AuthenticatedOperator
   ): Promise<{ record: Report; workspace: WorkspaceSnapshot }>;
+  createIniciativa(
+    input: IniciativaInput,
+    operator: AuthenticatedOperator
+  ): Promise<{ record: Iniciativa; workspace: WorkspaceSnapshot }>;
+  updateIniciativa(
+    id: string,
+    input: IniciativaInput,
+    expectedUpdatedAt: string,
+    operator: AuthenticatedOperator
+  ): Promise<{ record: Iniciativa; workspace: WorkspaceSnapshot }>;
   createConfigOption(input: ConfigOptionInput): Promise<{ workspace: WorkspaceSnapshot }>;
   updateConfigOption(
     chave: string,
@@ -173,6 +193,7 @@ export class GoogleSheetsAcionamentoRepository implements AcionamentoRepository 
   private async loadRawState(): Promise<{
     rowsWithLineNumber: Array<{ rowNumber: number; record: Acionamento }>;
     reportsWithLineNumber: Array<{ rowNumber: number; record: Report }>;
+    iniciativasWithLineNumber: Array<{ rowNumber: number; record: Iniciativa }>;
     configOptions: ConfigOption[];
     configOptionsWithRowNumber: Array<{ rowNumber: number; option: ConfigOption }>;
     auditoria: AuditoriaEntry[];
@@ -183,6 +204,7 @@ export class GoogleSheetsAcionamentoRepository implements AcionamentoRepository 
       `${SHEET_TABS.CONFIG}!A2:E`,
       `${SHEET_TABS.AUDITORIA}!A2:G`,
       `${SHEET_TABS.REPORTS}!A2:Q`,
+      `${SHEET_TABS.INICIATIVAS}!A2:Q`,
     ];
     const data = await batchGetRanges(this.spreadsheetId, ranges, this.accessToken);
 
@@ -190,9 +212,11 @@ export class GoogleSheetsAcionamentoRepository implements AcionamentoRepository 
     const configRows = data[ranges[1]] ?? [];
     const auditoriaRows = data[ranges[2]] ?? [];
     const reportsRows = data[ranges[3]] ?? [];
+    const iniciativasRows = data[ranges[4]] ?? [];
 
     const rowsWithLineNumber: Array<{ rowNumber: number; record: Acionamento }> = [];
     const reportsWithLineNumber: Array<{ rowNumber: number; record: Report }> = [];
+    const iniciativasWithLineNumber: Array<{ rowNumber: number; record: Iniciativa }> = [];
     acionamentosRows.forEach((row, index) => {
       const parsed = deserializeAcionamentoRow(row);
       if (parsed) {
@@ -209,6 +233,16 @@ export class GoogleSheetsAcionamentoRepository implements AcionamentoRepository 
         reportsWithLineNumber.push({
           rowNumber: index + 2,
           record: parsed,
+        });
+
+        iniciativasRows.forEach((row, index) => {
+          const parsed = deserializeIniciativaRow(row);
+          if (parsed) {
+            iniciativasWithLineNumber.push({
+              rowNumber: index + 2,
+              record: parsed,
+            });
+          }
         });
       }
     });
@@ -232,6 +266,7 @@ export class GoogleSheetsAcionamentoRepository implements AcionamentoRepository 
     return {
       rowsWithLineNumber,
       reportsWithLineNumber,
+      iniciativasWithLineNumber,
       configOptions,
       configOptionsWithRowNumber,
       auditoria,
@@ -239,17 +274,19 @@ export class GoogleSheetsAcionamentoRepository implements AcionamentoRepository 
   }
 
   async getWorkspace(): Promise<WorkspaceSnapshot> {
-    const { rowsWithLineNumber, reportsWithLineNumber, configOptions, auditoria } =
+    const { rowsWithLineNumber, reportsWithLineNumber, iniciativasWithLineNumber, configOptions, auditoria } =
       await this.loadRawState();
     const records = sortAcionamentosDesc(rowsWithLineNumber.map((r) => r.record));
     const reports = sortReportsDesc(reportsWithLineNumber.map((r) => r.record));
+    const iniciativas = sortIniciativasDesc(iniciativasWithLineNumber.map((r) => r.record));
+    const iniciativaSequence = computeIniciativaSequence(iniciativas);
     const { lastReportNumber } = computeReportSequence([...records, ...reports]);
     const nextReportNumber = getNextAcionamentoReportNumber(records, reports);
     const nextReportRecordNumber = getNextReportRecordNumber(records, reports);
 
     return {
       acionamentos: records,
-      iniciativas: [],
+      iniciativas,
       reports,
       configOptions,
       catalog: buildCatalogFromOptions(configOptions),
@@ -257,8 +294,8 @@ export class GoogleSheetsAcionamentoRepository implements AcionamentoRepository 
       lastReportNumber,
       nextReportNumber,
       nextReportRecordNumber,
-      lastIniciativaNumber: 0,
-      nextIniciativaNumber: 1,
+      lastIniciativaNumber: iniciativaSequence.lastIniciativaNumber,
+      nextIniciativaNumber: iniciativaSequence.nextIniciativaNumber,
       syncedAt: new Date().toISOString(),
     };
   }
@@ -502,6 +539,85 @@ export class GoogleSheetsAcionamentoRepository implements AcionamentoRepository 
 
       const workspace = await this.getWorkspace();
       return { record: updatedReport, workspace };
+    });
+  }
+
+  async createIniciativa(
+    rawInput: IniciativaInput,
+    operator: AuthenticatedOperator
+  ): Promise<{ record: Iniciativa; workspace: WorkspaceSnapshot }> {
+    const sanitized = sanitizeIniciativaInput(rawInput);
+    const validation = validateIniciativaInput(sanitized);
+    if (!validation.valid) {
+      throw new ValidationError('Dados inválidos no formulário de iniciativa.', validation.errors);
+    }
+    return withSpreadsheetLock(this.spreadsheetId, async () => {
+      const { iniciativasWithLineNumber } = await this.loadRawState();
+      const existing = iniciativasWithLineNumber.map((item) => item.record);
+      const sequence = computeIniciativaSequence(existing);
+      const nowIso = new Date().toISOString();
+      const record: Iniciativa = {
+        ...sanitized,
+        id: crypto.randomUUID(),
+        numeroIniciativa: sequence.nextIniciativaNumber,
+        createdAt: nowIso,
+        createdByName: operator.name,
+        createdByEmail: operator.email,
+        updatedAt: nowIso,
+        updatedByName: operator.name,
+        updatedByEmail: operator.email,
+      };
+      await appendRow(
+        this.spreadsheetId,
+        SHEET_TABS.INICIATIVAS,
+        serializeIniciativaRow(record),
+        this.accessToken
+      );
+      return { record, workspace: await this.getWorkspace() };
+    });
+  }
+
+  async updateIniciativa(
+    id: string,
+    rawInput: IniciativaInput,
+    expectedUpdatedAt: string,
+    operator: AuthenticatedOperator
+  ): Promise<{ record: Iniciativa; workspace: WorkspaceSnapshot }> {
+    const sanitized = sanitizeIniciativaInput(rawInput);
+    const validation = validateIniciativaInput(sanitized);
+    if (!validation.valid) {
+      throw new ValidationError('Dados inválidos na edição da iniciativa.', validation.errors);
+    }
+    return withSpreadsheetLock(this.spreadsheetId, async () => {
+      const { iniciativasWithLineNumber } = await this.loadRawState();
+      const target = iniciativasWithLineNumber.find((item) => item.record.id === id);
+      if (!target) {
+        throw new NotFoundError('Iniciativa não encontrada na planilha.');
+      }
+      if (expectedUpdatedAt && target.record.updatedAt !== expectedUpdatedAt) {
+        throw new IniciativaConflictError(
+          'Esta iniciativa foi alterada por outro usuário. Atualize os dados antes de salvar novamente.'
+        );
+      }
+      const nowIso = new Date().toISOString();
+      const record: Iniciativa = {
+        ...sanitized,
+        id: target.record.id,
+        numeroIniciativa: target.record.numeroIniciativa,
+        createdAt: target.record.createdAt,
+        createdByName: target.record.createdByName,
+        createdByEmail: target.record.createdByEmail,
+        updatedAt: nowIso,
+        updatedByName: operator.name,
+        updatedByEmail: operator.email,
+      };
+      await updateRange(
+        this.spreadsheetId,
+        `${SHEET_TABS.INICIATIVAS}!A${target.rowNumber}:Q${target.rowNumber}`,
+        [serializeIniciativaRow(record)],
+        this.accessToken
+      );
+      return { record, workspace: await this.getWorkspace() };
     });
   }
 

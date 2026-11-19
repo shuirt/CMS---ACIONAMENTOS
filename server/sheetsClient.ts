@@ -7,6 +7,7 @@ import type {
   AuditoriaEntry,
   ConfigGrupo,
   ConfigOption,
+  Iniciativa,
   Report,
   StatusOperacional,
   TipoLocalidade,
@@ -17,6 +18,7 @@ export const SHEET_TABS = {
   CONFIG: 'Config',
   AUDITORIA: 'Auditoria',
   REPORTS: 'Reports',
+  INICIATIVAS: 'Iniciativas',
 } as const;
 
 export const ACIONAMENTOS_HEADERS = [
@@ -83,6 +85,26 @@ export const REPORTS_HEADERS = [
   'Data',
   'Horário',
   'Analista responsável',
+];
+
+export const INICIATIVAS_HEADERS = [
+  'ID',
+  'Número da iniciativa',
+  'Data',
+  'Horário',
+  'Município',
+  'Tipo de localidade',
+  'KM ferroviário',
+  'Analista responsável',
+  'Descrição',
+  'Tipificação',
+  'INC',
+  'Data de criação',
+  'Operador que criou',
+  'E-mail de quem criou',
+  'Data da última atualização',
+  'Operador que atualizou',
+  'E-mail de quem atualizou',
 ];
 
 export function serializeAcionamentoRow(item: Acionamento): string[] {
@@ -223,6 +245,53 @@ export function deserializeReportRow(row: string[]): Report | null {
     dataRegistro: (row[14] ?? '').trim(),
     horario: (row[15] ?? '').trim(),
     analistaResponsavel: (row[16] ?? '').trim(),
+  };
+}
+
+export function serializeIniciativaRow(item: Iniciativa): string[] {
+  return [
+    item.id,
+    String(item.numeroIniciativa),
+    item.dataRegistro,
+    item.horario,
+    item.municipio,
+    item.tipoLocalidade,
+    item.kmFerroviario,
+    item.analistaResponsavel,
+    item.descricao,
+    item.tipificacao,
+    item.inc,
+    item.createdAt,
+    item.createdByName,
+    item.createdByEmail,
+    item.updatedAt,
+    item.updatedByName,
+    item.updatedByEmail,
+  ];
+}
+
+export function deserializeIniciativaRow(row: string[]): Iniciativa | null {
+  const id = (row[0] ?? '').trim();
+  const numeroIniciativa = Number((row[1] ?? '').trim());
+  if (!id || !Number.isInteger(numeroIniciativa) || numeroIniciativa <= 0) return null;
+  return {
+    id,
+    numeroIniciativa,
+    dataRegistro: (row[2] ?? '').trim(),
+    horario: (row[3] ?? '').trim(),
+    municipio: (row[4] ?? '').trim(),
+    tipoLocalidade: ((row[5] ?? '').trim() || 'Linha Férrea') as TipoLocalidade,
+    kmFerroviario: (row[6] ?? '').trim(),
+    analistaResponsavel: (row[7] ?? '').trim(),
+    descricao: row[8] ?? '',
+    tipificacao: (row[9] ?? '').trim(),
+    inc: (row[10] ?? '').trim(),
+    createdAt: (row[11] ?? '').trim(),
+    createdByName: (row[12] ?? '').trim(),
+    createdByEmail: (row[13] ?? '').trim(),
+    updatedAt: (row[14] ?? '').trim(),
+    updatedByName: (row[15] ?? '').trim(),
+    updatedByEmail: (row[16] ?? '').trim(),
   };
 }
 
@@ -402,6 +471,7 @@ export async function createCmsSpreadsheet(
         { properties: { title: SHEET_TABS.CONFIG } },
         { properties: { title: SHEET_TABS.AUDITORIA } },
         { properties: { title: SHEET_TABS.REPORTS } },
+        { properties: { title: SHEET_TABS.INICIATIVAS } },
       ],
     }),
   });
@@ -426,6 +496,7 @@ export async function ensureCmsSpreadsheetStructure(
     SHEET_TABS.CONFIG,
     SHEET_TABS.AUDITORIA,
     SHEET_TABS.REPORTS,
+    SHEET_TABS.INICIATIVAS,
   ];
   const missingTabs = requiredTabs.filter((t) => !existingTitles.has(t));
 
@@ -458,6 +529,7 @@ async function seedMissingHeadersAndConfig(
     `${SHEET_TABS.CONFIG}!A1:E`,
     `${SHEET_TABS.AUDITORIA}!A1:G1`,
     `${SHEET_TABS.REPORTS}!A1:Q1`,
+    `${SHEET_TABS.INICIATIVAS}!A1:Q1`,
   ];
   const existing = await batchGetRanges(spreadsheetId, ranges, accessToken);
 
@@ -528,6 +600,16 @@ async function seedMissingHeadersAndConfig(
   const existingReportsHeader = existing[ranges[3]]?.[0] ?? [];
   if (JSON.stringify(existingReportsHeader) !== JSON.stringify(REPORTS_HEADERS)) {
     await updateRange(spreadsheetId, `${SHEET_TABS.REPORTS}!A1:Q1`, [REPORTS_HEADERS], accessToken);
+  }
+
+  const existingIniciativasHeader = existing[ranges[4]]?.[0] ?? [];
+  if (JSON.stringify(existingIniciativasHeader) !== JSON.stringify(INICIATIVAS_HEADERS)) {
+    await updateRange(
+      spreadsheetId,
+      `${SHEET_TABS.INICIATIVAS}!A1:Q1`,
+      [INICIATIVAS_HEADERS],
+      accessToken
+    );
   }
 
   return seededConfig;
