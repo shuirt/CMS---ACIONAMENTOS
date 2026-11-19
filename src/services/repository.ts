@@ -367,8 +367,8 @@ export class DemoAcionamentoRepository implements IClientAcionamentoRepository {
   readonly mode = 'demo' as const;
   private state: WorkspaceSnapshot;
 
-  constructor() {
-    this.state = createDemoWorkspace();
+  constructor(initialAcionamentos: Acionamento[] = []) {
+    this.state = createDemoWorkspace(initialAcionamentos);
   }
 
   async getWorkspace(): Promise<WorkspaceSnapshot> {

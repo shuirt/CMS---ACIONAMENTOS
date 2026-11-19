@@ -47,6 +47,7 @@ function makeInput(overrides: Partial<AcionamentoInput> = {}): AcionamentoInput 
     horarioNormalizacao: '',
     quemAcionou: 'CCE',
     tipoLocalidade: 'Linha Férrea',
+    nomeLocalidade: '',
     kmFerroviario: 'KM 45+200',
     housingRh: 'EH01/03',
     municipio: 'Cariacica (ES)',
@@ -85,7 +86,7 @@ test('validateAcionamentoInput allows deferred INC on all statuses including Enc
   assert.equal(validResult.valid, true);
   assert.deepEqual(validResult.errors, {});
 
-  // All operational statuses allow omitting or deferring INC so users can close/report first and fill INC later
+  // INC is optional on all statuses, but only some statuses should be flagged as missing it.
   for (const status of [
     'Em andamento',
     'Sem atendimento',
@@ -94,7 +95,10 @@ test('validateAcionamentoInput allows deferred INC on all statuses including Enc
     'Encerrado',
     'Report',
   ] as const) {
-    assert.equal(isIncRequiredForStatus(status), false);
+    assert.equal(
+      isIncRequiredForStatus(status),
+      !['Sem atendimento', 'Cancelado', 'Informação'].includes(status)
+    );
     const res = validateAcionamentoInput(makeInput({ statusOperacional: status, inc: '' }));
     assert.equal(res.valid, true);
 
@@ -172,6 +176,22 @@ test('sanitizeAcionamentoInput clears tecnologiaUtilizada when tecnologiaEmprega
   );
   assert.equal(sanitized.tecnologiaEmpregada, false);
   assert.equal(sanitized.tecnologiaUtilizada, '');
+});
+
+test('sanitizeAcionamentoInput retains locality names only for Pátio and Estação', () => {
+  const patio = sanitizeAcionamentoInput(
+    makeInput({ tipoLocalidade: 'Pátio', nomeLocalidade: '  Pátio Central  ' })
+  );
+  const station = sanitizeAcionamentoInput(
+    makeInput({ tipoLocalidade: 'Estação', nomeLocalidade: 'Estação Central' })
+  );
+  const railway = sanitizeAcionamentoInput(
+    makeInput({ tipoLocalidade: 'Linha Férrea', nomeLocalidade: 'Nome ignorado' })
+  );
+
+  assert.equal(patio.nomeLocalidade, 'Pátio Central');
+  assert.equal(station.nomeLocalidade, 'Estação Central');
+  assert.equal(railway.nomeLocalidade, '');
 });
 
 test('date formatting converts ISO to Brazilian formats', () => {
@@ -296,7 +316,7 @@ test('filterAcionamentos handles Em aberto, Encerrado, Todos, INC presence and f
   ];
 
   const aberto = filterAcionamentos(records, { tab: 'aberto' });
-  assert.deepEqual(aberto.map((r) => r.id), ['1', '3']);
+  assert.deepEqual(aberto.map((r) => r.id), ['3']);
 
   const encerrado = filterAcionamentos(records, { tab: 'encerrado' });
   assert.deepEqual(encerrado.map((r) => r.id), ['2']);
@@ -329,6 +349,21 @@ test('filterAcionamentos handles Em aberto, Encerrado, Todos, INC presence and f
   assert.deepEqual(byReport.map((r) => r.id), ['1']);
 
   assert.deepEqual(getUniqueFieldValues(records, 'quemAcionou'), ['CCE', 'CCS VLI', 'CPT']);
+});
+
+test('INC gaps are not flagged for Sem atendimento, Cancelado, or Informação', () => {
+  const records = (['Sem atendimento', 'Cancelado', 'Informação'] as const).map(
+    (statusOperacional, index) =>
+      makeRecord({ id: String(index), statusOperacional, inc: '' })
+  );
+
+  assert.deepEqual(filterAcionamentos(records, { incFilter: 'sem_inc' }), []);
+  for (const record of records) {
+    assert.equal(isIncRequiredForStatus(record.statusOperacional), false);
+    const clipboard = formatAcionamentoClipboardText(record);
+    assert.equal(clipboard.includes('Sem INC'), false);
+    assert.equal(clipboard.includes('INC:'), false);
+  }
 });
 
 test('isRelevantReportAcionamento and filterReportAcionamentos isolate Report occurrences cleanly', () => {

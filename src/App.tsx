@@ -7,6 +7,7 @@ import { Header, type NavSection } from './components/Header';
 import { SpreadsheetSetupModal } from './components/SpreadsheetSetupModal';
 import { ToastContainer, type ToastMessage } from './components/ToastContainer';
 import { useAcionamentos } from './hooks/useAcionamentos';
+import { loadCsvDemoAcionamentos } from './data/csvDemoSeed';
 import { AcionamentoDetailPage } from './pages/AcionamentoDetailPage';
 import { AcionamentoFormPage } from './pages/AcionamentoFormPage';
 import { HistoricoPage } from './pages/HistoricoPage';
@@ -74,6 +75,10 @@ type ActiveView =
   | { type: 'report_edit'; reportId: string };
 
 export default function App() {
+  const searchParams = new URLSearchParams(window.location.search);
+  const csvTestDataRequested =
+    searchParams.get('demo') === '1' && searchParams.get('csvTestData') === '1';
+
   const [operator, setOperator] = useState<OperatorIdentity | null>(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('demo') === '1') {
@@ -97,9 +102,12 @@ export default function App() {
   const [activeView, setActiveView] = useState<ActiveView>({ type: 'list' });
   const [returnNavAfterDetail, setReturnNavAfterDetail] = useState<NavSection>('registros');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [csvDemoAcionamentos, setCsvDemoAcionamentos] = useState<Acionamento[]>([]);
+  const [csvDemoLoading, setCsvDemoLoading] = useState(csvTestDataRequested);
 
   // Preserved list filter states across detail/edit/create transitions
-  const [registrosDateFilter, setRegistrosDateFilter] = useState<RegistrosDateFilter>('hoje');
+  const [registrosDateFilter, setRegistrosDateFilter] =
+    useState<RegistrosDateFilter>('todas');
   const [registrosTab, setRegistrosTab] = useState<RegistrosTab>('todos');
   const [registrosIncFilter, setRegistrosIncFilter] = useState<IncFilter>('todos');
   const [registrosSearch, setRegistrosSearch] = useState('');
@@ -157,10 +165,46 @@ export default function App() {
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    if (!csvTestDataRequested) return;
+    if (operator?.mode !== 'demo') {
+      setCsvDemoLoading(false);
+      return;
+    }
+
+    let active = true;
+    setCsvDemoLoading(true);
+    void loadCsvDemoAcionamentos()
+      .then((records) => {
+        if (!active) return;
+        setCsvDemoAcionamentos(records);
+        notify(`${records.length.toLocaleString('pt-BR')} registros do CSV carregados no modo demo.`, 'success');
+      })
+      .catch((err) => {
+        if (active) {
+          notify(
+            err instanceof Error
+              ? `Não foi possível carregar o CSV de demonstração: ${err.message}`
+              : 'Não foi possível carregar o CSV de demonstração.',
+            'error'
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setCsvDemoLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [csvTestDataRequested, operator?.mode, notify]);
+
   const repository: IClientAcionamentoRepository | null = useMemo(() => {
     if (!operator) return null;
     if (operator.mode === 'demo') {
-      return new DemoAcionamentoRepository();
+      return new DemoAcionamentoRepository(
+        csvTestDataRequested ? csvDemoAcionamentos : []
+      );
     }
     if (!accessToken || !spreadsheetId) {
       return null;
@@ -169,7 +213,7 @@ export default function App() {
       () => getInMemoryAccessToken() ?? accessToken,
       () => spreadsheetId
     );
-  }, [operator, accessToken, spreadsheetId]);
+  }, [operator, accessToken, spreadsheetId, csvTestDataRequested, csvDemoAcionamentos]);
 
   const handleAuthExpired = useCallback(
     (msg: string) => {
@@ -498,7 +542,7 @@ export default function App() {
           <HistoricoPage
             acionamentos={workspace.acionamentos}
             catalog={workspace.catalog}
-            loading={loading}
+            loading={loading || csvDemoLoading}
             refreshing={refreshing}
             filters={historicoFilters}
             onFiltersChange={setHistoricoFilters}
@@ -618,7 +662,7 @@ export default function App() {
         ) : (
           <RegistrosPage
             acionamentos={workspace.acionamentos}
-            loading={loading}
+            loading={loading || csvDemoLoading}
             refreshing={refreshing}
             error={error}
             syncedAt={workspace.syncedAt}
@@ -626,6 +670,7 @@ export default function App() {
             dateFilter={registrosDateFilter}
             onDateFilterChange={setRegistrosDateFilter}
             activeTab={registrosTab}
+            initialContinuousMode={csvTestDataRequested ? false : undefined}
             incFilter={registrosIncFilter}
             search={registrosSearch}
             operatorFilter={registrosOperator}

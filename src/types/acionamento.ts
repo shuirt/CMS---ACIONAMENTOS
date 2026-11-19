@@ -19,6 +19,7 @@ export interface Acionamento {
   horarioNormalizacao: string; // HH:mm or ""
   quemAcionou: string;
   tipoLocalidade: TipoLocalidade;
+  nomeLocalidade: string;
   kmFerroviario: string;
   housingRh: string;
   municipio: string;
@@ -50,6 +51,7 @@ export interface AcionamentoInput {
   horarioNormalizacao: string;
   quemAcionou: string;
   tipoLocalidade: TipoLocalidade;
+  nomeLocalidade: string;
   kmFerroviario: string;
   housingRh: string;
   municipio: string;

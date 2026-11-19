@@ -179,7 +179,7 @@ export class GoogleSheetsAcionamentoRepository implements AcionamentoRepository 
   }> {
     await ensureSpreadsheetStructure(this.spreadsheetId, this.accessToken);
     const ranges = [
-      `${SHEET_TABS.ACIONAMENTOS}!A2:AD`,
+      `${SHEET_TABS.ACIONAMENTOS}!A2:AE`,
       `${SHEET_TABS.CONFIG}!A2:E`,
       `${SHEET_TABS.AUDITORIA}!A2:G`,
       `${SHEET_TABS.REPORTS}!A2:Q`,

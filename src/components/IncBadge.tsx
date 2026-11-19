@@ -2,20 +2,24 @@ import { useState } from 'react';
 import { Check, Copy, MinusCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { copyTextToClipboard } from '../utils/clipboard';
-import { hasValidInc } from '../utils/validation';
+import { hasValidInc, isIncRequiredForStatus } from '../utils/validation';
+import type { StatusOperacional } from '../types/acionamento';
 
 interface IncBadgeProps {
   inc: string;
+  status?: StatusOperacional;
   onNotify?: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
   size?: 'sm' | 'md';
 }
 
-export function IncBadge({ inc, onNotify, size = 'sm' }: IncBadgeProps) {
+export function IncBadge({ inc, status, onNotify, size = 'sm' }: IncBadgeProps) {
   const [copied, setCopied] = useState(false);
   const valid = hasValidInc(inc);
   const cleanInc = inc.trim();
 
   if (!valid) {
+    if (status && !isIncRequiredForStatus(status)) return null;
+
     return (
       <span
         className={`inline-flex items-center gap-1.5 rounded-xl border border-[#F3D085] bg-[#FEF6E3] text-[#8A5602] font-semibold tracking-[-0.01em] whitespace-nowrap shrink-0 ${

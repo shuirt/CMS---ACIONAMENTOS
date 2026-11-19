@@ -48,6 +48,7 @@ export function AcionamentoListRow({
 
   const locationDetails = [
     item.tipoLocalidade,
+    item.nomeLocalidade ? `Nome: ${item.nomeLocalidade}` : '',
     item.kmFerroviario || 'KM não informado',
     item.housingRh || 'RH não informado',
     item.equipeCampo ? `Equipe: ${item.equipeCampo}` : '',
@@ -121,7 +122,7 @@ export function AcionamentoListRow({
         {/* Far Right: INC + Status + Open Detail Control */}
         <div className="flex items-center justify-between lg:justify-end gap-3 shrink-0 pt-2 lg:pt-0">
           <div className="flex items-center gap-2.5">
-            <IncBadge inc={item.inc} onNotify={onNotify} />
+            <IncBadge inc={item.inc} status={item.statusOperacional} onNotify={onNotify} />
             <StatusIndicator status={item.statusOperacional} />
           </div>
 
@@ -206,7 +207,11 @@ export function AcionamentoListRow({
                       <span className="text-[#64737c]">Início / Fim: </span>
                       <span className="font-mono font-medium tabular-nums text-[#162229]">
                         {formatDateBR(item.dataRegistro)}
-                        {item.dataFim ? ` → ${formatDateBR(item.dataFim)}` : ' → Em aberto'}
+                        {item.dataFim
+                          ? ` → ${formatDateBR(item.dataFim)}`
+                          : item.statusOperacional === 'Em andamento'
+                            ? ' → Em aberto'
+                            : ''}
                       </span>
                     </div>
                     <div className="sm:col-span-2">
@@ -245,7 +250,8 @@ export function AcionamentoListRow({
                   <span>
                     Duração total:{' '}
                     <strong className="font-mono font-semibold tabular-nums text-[#162229]">
-                      {durationLabel ?? 'Em andamento'}
+                      {durationLabel ??
+                        (item.statusOperacional === 'Em andamento' ? 'Em andamento' : '—')}
                     </strong>
                   </span>
                 </div>

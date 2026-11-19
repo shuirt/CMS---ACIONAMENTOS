@@ -37,6 +37,7 @@ import {
   getTodayIsoDate,
   hasValidInc,
   inferUfFromMunicipio,
+  isIncRequiredForStatus,
   isValidTime24h,
   normalizeTime24hOnBlur,
   sanitizeAcionamentoInput,
@@ -78,6 +79,7 @@ function buildInitialInput(
       horarioNormalizacao: record.horarioNormalizacao,
       quemAcionou: record.quemAcionou,
       tipoLocalidade: record.tipoLocalidade,
+      nomeLocalidade: record.nomeLocalidade,
       kmFerroviario: record.kmFerroviario,
       housingRh: record.housingRh,
       municipio: record.municipio,
@@ -106,6 +108,7 @@ function buildInitialInput(
     horarioNormalizacao: '',
     quemAcionou: '',
     tipoLocalidade: (catalog.tiposLocalidade[0] as TipoLocalidade) ?? 'Linha Férrea',
+    nomeLocalidade: '',
     kmFerroviario: '',
     housingRh: '',
     municipio: defaultEsMunicipios[0] ?? catalog.municipios[0] ?? '',
@@ -137,6 +140,7 @@ const FIELD_ELEMENT_IDS: Partial<Record<keyof AcionamentoInput, string>> = {
   horarioChegadaCampo: 'input-horario-chegada',
   horarioNormalizacao: 'input-horario-saida',
   housingRh: 'housing-input',
+  nomeLocalidade: 'nome-localidade-input',
   descricaoCronologia: 'textarea-cronologia',
   tecnologiaUtilizada: 'tech-select',
   equipeCampo: 'equipe-campo',
@@ -795,7 +799,13 @@ export function AcionamentoFormPage({
                     <button
                       key={loc}
                       type="button"
-                      onClick={() => updateField('tipoLocalidade', loc as TipoLocalidade)}
+                      onClick={() => {
+                        const nextLocality = loc as TipoLocalidade;
+                        updateField('tipoLocalidade', nextLocality);
+                        if (nextLocality === 'Linha Férrea') {
+                          updateField('nomeLocalidade', '');
+                        }
+                      }}
                       className={`px-3.5 py-1 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
                         isActive
                           ? 'bg-white text-[#005C59] font-semibold shadow-2xs border border-[#c8d5db]'
@@ -808,6 +818,27 @@ export function AcionamentoFormPage({
                 })}
               </div>
             </div>
+
+            {(form.tipoLocalidade === 'Pátio' || form.tipoLocalidade === 'Estação') && (
+              <div className="max-w-lg space-y-1.5">
+                <label
+                  htmlFor="nome-localidade-input"
+                  className="text-xs font-medium text-[#52636d]"
+                >
+                  {form.tipoLocalidade === 'Pátio' ? 'Nome do pátio' : 'Nome da estação'}
+                </label>
+                <input
+                  id="nome-localidade-input"
+                  type="text"
+                  value={form.nomeLocalidade}
+                  onChange={(e) => updateField('nomeLocalidade', e.target.value)}
+                  placeholder={`Digite o nome do ${
+                    form.tipoLocalidade === 'Pátio' ? 'pátio' : 'estação'
+                  }`}
+                  className={FIELD_VARIANTS.input}
+                />
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3.5">
               {/* KM Ferroviário */}
@@ -1352,7 +1383,13 @@ export function AcionamentoFormPage({
           pendingSanitized
             ? [
                 `Quem acionou: ${pendingSanitized.quemAcionou}`,
-                `INC: ${pendingSanitized.inc || 'Sem INC'} · Status: ${pendingSanitized.statusOperacional}`,
+                `${
+                  pendingSanitized.inc
+                    ? `INC: ${pendingSanitized.inc} · `
+                    : isIncRequiredForStatus(pendingSanitized.statusOperacional)
+                      ? 'INC: Sem INC · '
+                      : ''
+                }Status: ${pendingSanitized.statusOperacional}`,
                 `Local: ${pendingSanitized.tipoLocalidade} · ${pendingSanitized.municipio || '—'} · ${pendingSanitized.kmFerroviario || '—'}`,
               ]
             : undefined

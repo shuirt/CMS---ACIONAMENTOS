@@ -1,4 +1,7 @@
-import { INITIAL_CONFIG_OPTIONS } from '../src/config/defaultCatalog';
+import {
+  INITIAL_CONFIG_OPTIONS,
+  synchronizeEquipeCampoOptions,
+} from '../src/config/defaultCatalog';
 import type {
   Acionamento,
   AuditoriaEntry,
@@ -47,6 +50,7 @@ export const ACIONAMENTOS_HEADERS = [
   'E-mail de quem atualizou',
   'Vigilante(s)',
   'Data fim',
+  'Nome do pátio/estação',
 ];
 
 export const CONFIG_HEADERS = ['Chave', 'Grupo', 'Valor', 'Ativo', 'Ordem de exibição'];
@@ -113,6 +117,7 @@ export function serializeAcionamentoRow(item: Acionamento): string[] {
     item.updatedByEmail,
     item.vigilantes,
     item.dataFim,
+    item.nomeLocalidade,
   ];
 }
 
@@ -143,6 +148,7 @@ export function deserializeAcionamentoRow(row: string[]): Acionamento | null {
     numeroReport,
     dataRegistro: (row[2] ?? '').trim(),
     dataFim: (row[29] ?? '').trim(),
+    nomeLocalidade: (row[30] ?? '').trim(),
     horarioAcionamento: (row[3] ?? '').trim(),
     horarioEquipeAcionada: (row[4] ?? '').trim(),
     horarioChegadaCampo: (row[5] ?? '').trim(),
@@ -448,8 +454,8 @@ async function seedMissingHeadersAndConfig(
   accessToken: string
 ): Promise<boolean> {
   const ranges = [
-    `${SHEET_TABS.ACIONAMENTOS}!A1:AD1`,
-    `${SHEET_TABS.CONFIG}!A1:E2`,
+    `${SHEET_TABS.ACIONAMENTOS}!A1:AE1`,
+    `${SHEET_TABS.CONFIG}!A1:E`,
     `${SHEET_TABS.AUDITORIA}!A1:G1`,
     `${SHEET_TABS.REPORTS}!A1:Q1`,
   ];
@@ -457,11 +463,19 @@ async function seedMissingHeadersAndConfig(
 
   const existingHeaderRow = existing[ranges[0]]?.[0] ?? [];
   if (existingHeaderRow.length === 0) {
-    await updateRange(spreadsheetId, `${SHEET_TABS.ACIONAMENTOS}!A1:AD1`, [ACIONAMENTOS_HEADERS], accessToken);
+    await updateRange(spreadsheetId, `${SHEET_TABS.ACIONAMENTOS}!A1:AE1`, [ACIONAMENTOS_HEADERS], accessToken);
   } else if (existingHeaderRow.length === 28) {
     await updateRange(spreadsheetId, `${SHEET_TABS.ACIONAMENTOS}!AC1:AD1`, [['Vigilante(s)', 'Data fim']], accessToken);
   } else if (existingHeaderRow.length === 29 && !(existingHeaderRow[29] ?? '').trim()) {
     await updateRange(spreadsheetId, `${SHEET_TABS.ACIONAMENTOS}!AD1:AD1`, [['Data fim']], accessToken);
+  }
+  if (existingHeaderRow.length > 0 && existingHeaderRow.length <= 30) {
+    await updateRange(
+      spreadsheetId,
+      `${SHEET_TABS.ACIONAMENTOS}!AE1:AE1`,
+      [['Nome do pátio/estação']],
+      accessToken
+    );
   }
 
   let seededConfig = false;
@@ -487,6 +501,24 @@ async function seedMissingHeadersAndConfig(
       accessToken
     );
     seededConfig = true;
+  } else {
+    const configOptions = configRows
+      .slice(1)
+      .map(deserializeConfigRow)
+      .filter((option): option is ConfigOption => option !== null);
+    const synchronizedOptions = synchronizeEquipeCampoOptions(configOptions);
+    if (
+      JSON.stringify(configOptions.map(serializeConfigRow)) !==
+      JSON.stringify(synchronizedOptions.map(serializeConfigRow))
+    ) {
+      const dataRows = synchronizedOptions.map(serializeConfigRow);
+      await updateRange(
+        spreadsheetId,
+        `${SHEET_TABS.CONFIG}!A2:E${dataRows.length + 1}`,
+        dataRows,
+        accessToken
+      );
+    }
   }
 
   if ((existing[ranges[2]]?.length ?? 0) === 0) {

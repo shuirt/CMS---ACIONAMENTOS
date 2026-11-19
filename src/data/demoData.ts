@@ -1,9 +1,9 @@
 import { DEFAULT_CATALOG, INITIAL_CONFIG_OPTIONS } from '../config/defaultCatalog';
-import type { WorkspaceSnapshot } from '../types/acionamento';
+import type { Acionamento, WorkspaceSnapshot } from '../types/acionamento';
 
-export function createDemoWorkspace(): WorkspaceSnapshot {
+export function createDemoWorkspace(acionamentos: Acionamento[] = []): WorkspaceSnapshot {
   return {
-    acionamentos: [],
+    acionamentos: [...acionamentos],
     iniciativas: [],
     reports: [],
     configOptions: INITIAL_CONFIG_OPTIONS.map((option) => ({ ...option })),

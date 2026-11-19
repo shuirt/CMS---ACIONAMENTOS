@@ -120,16 +120,28 @@ export const INITIAL_CONFIG_OPTIONS: ConfigOption[] = [
   { chave: 'ac_imagens', grupo: 'acoes_envolvidas', valor: 'Apuração de imagens', ativo: true, ordem: 3 },
 
   // Equipe de campo
-  { chave: 'eq_ronda_rh07', grupo: 'equipe_campo', valor: 'Ronda RH07', ativo: true, ordem: 1 },
-  { chave: 'eq_mot_bh', grupo: 'equipe_campo', valor: 'Motorizado BH', ativo: true, ordem: 2 },
-  { chave: 'eq_mot_cpena', grupo: 'equipe_campo', valor: 'Motorizado Conselheiro Pena', ativo: true, ordem: 3 },
-  { chave: 'eq_mot_gv', grupo: 'equipe_campo', valor: 'Motorizado Governador Valadares', ativo: true, ordem: 4 },
-  { chave: 'eq_mot_vitoria', grupo: 'equipe_campo', valor: 'Motorizado Vitória', ativo: true, ordem: 5 },
-  { chave: 'eq_mot_serra', grupo: 'equipe_campo', valor: 'Motorizado Serra / Tubarão', ativo: true, ordem: 6 },
-  { chave: 'eq_posto_fixo', grupo: 'equipe_campo', valor: 'Posto Fixo', ativo: true, ordem: 7 },
-  { chave: 'eq_tatica', grupo: 'equipe_campo', valor: 'Equipe Tática', ativo: true, ordem: 8 },
-  { chave: 'eq_remoto_cms', grupo: 'equipe_campo', valor: 'Monitoramento Remoto CMS', ativo: true, ordem: 9 },
-  { chave: 'eq_na', grupo: 'equipe_campo', valor: 'N/A', ativo: true, ordem: 10 },
+  { chave: 'eq_monitoramento_remoto_cms', grupo: 'equipe_campo', valor: 'Monitoramento Remoto (CMS)', ativo: true, ordem: 1 },
+  { chave: 'eq_ronda_rh03', grupo: 'equipe_campo', valor: 'Ronda RH03', ativo: true, ordem: 2 },
+  { chave: 'eq_ronda_rh07', grupo: 'equipe_campo', valor: 'Ronda RH07', ativo: true, ordem: 3 },
+  { chave: 'eq_ronda_joao_neiva', grupo: 'equipe_campo', valor: 'Ronda João Neiva', ativo: true, ordem: 4 },
+  { chave: 'eq_mot_colatina', grupo: 'equipe_campo', valor: 'Mot. Colatina', ativo: true, ordem: 5 },
+  { chave: 'eq_mot_aimores', grupo: 'equipe_campo', valor: 'Mot. Aimorés', ativo: true, ordem: 6 },
+  { chave: 'eq_mot_conselheiro_pena', grupo: 'equipe_campo', valor: 'Mot. Conselheiro Pena', ativo: true, ordem: 7 },
+  { chave: 'eq_mot_gov_valadares_51_52', grupo: 'equipe_campo', valor: 'Mot. Gov. Valadares 51/52', ativo: true, ordem: 8 },
+  { chave: 'eq_mot_gov_valadares', grupo: 'equipe_campo', valor: 'Mot. Gov. Valadares', ativo: true, ordem: 9 },
+  { chave: 'eq_mot_cachoeira_escura', grupo: 'equipe_campo', valor: 'Mot. Cachoeira Escura', ativo: true, ordem: 10 },
+  { chave: 'eq_mot_ipatinga', grupo: 'equipe_campo', valor: 'Mot. Ipatinga', ativo: true, ordem: 11 },
+  { chave: 'eq_mot_nova_era', grupo: 'equipe_campo', valor: 'Mot. Nova Era', ativo: true, ordem: 12 },
+  { chave: 'eq_mot_itabira', grupo: 'equipe_campo', valor: 'Mot. Itabira', ativo: true, ordem: 13 },
+  { chave: 'eq_mot_santa_barbara', grupo: 'equipe_campo', valor: 'Mot. Santa Barbara', ativo: true, ordem: 14 },
+  { chave: 'eq_pn_gongo_soco', grupo: 'equipe_campo', valor: 'PN Gongo Soco', ativo: true, ordem: 15 },
+  { chave: 'eq_fixo_mariana', grupo: 'equipe_campo', valor: 'Fixo Mariana', ativo: true, ordem: 16 },
+  { chave: 'eq_fixo_est_ouro_preto', grupo: 'equipe_campo', valor: 'Fixo Est. Ouro Preto', ativo: true, ordem: 17 },
+  { chave: 'eq_new_mot_bh', grupo: 'equipe_campo', valor: 'Mot. BH', ativo: true, ordem: 18 },
+  { chave: 'eq_fixo_patio_dois', grupo: 'equipe_campo', valor: 'Fixo Pátio Dois', ativo: true, ordem: 19 },
+  { chave: 'eq_fixo_mario_carvalho', grupo: 'equipe_campo', valor: 'Fixo Mário Carvalho', ativo: true, ordem: 20 },
+  { chave: 'eq_fixo_ebh', grupo: 'equipe_campo', valor: 'Fixo EBH', ativo: true, ordem: 21 },
+  { chave: 'eq_fixo_patio_funil', grupo: 'equipe_campo', valor: 'Fixo Pátio Funil', ativo: true, ordem: 22 },
 
   // Materiais / Pessoas / Ativos (Dados Reais VLI CMS)
   { chave: 'mat_alarme', grupo: 'material_ativos', valor: 'Alarme', ativo: true, ordem: 1 },
@@ -225,6 +237,34 @@ export function buildCatalogFromOptions(options: ConfigOption[]): ConfigCatalog 
     materiaisAtivos: pick('material_ativos', fallback.materiaisAtivos),
     tipificacoes: pick('tipificacao', fallback.tipificacoes),
   };
+}
+
+export function synchronizeEquipeCampoOptions(options: ConfigOption[]): ConfigOption[] {
+  const synchronized = options.map((option) =>
+    option.grupo === 'equipe_campo' ? { ...option, ativo: false } : option
+  );
+  const defaults = INITIAL_CONFIG_OPTIONS.filter((option) => option.grupo === 'equipe_campo');
+
+  for (const desired of defaults) {
+    const existingIndex = synchronized.findIndex(
+      (option) =>
+        option.grupo === 'equipe_campo' &&
+        option.valor.toLocaleLowerCase() === desired.valor.toLocaleLowerCase()
+    );
+    if (existingIndex === -1) {
+      synchronized.push(desired);
+      continue;
+    }
+
+    synchronized[existingIndex] = {
+      ...synchronized[existingIndex],
+      valor: desired.valor,
+      ativo: true,
+      ordem: desired.ordem,
+    };
+  }
+
+  return synchronized;
 }
 
 function buildDefaultCatalogUnsafe(): ConfigCatalog {

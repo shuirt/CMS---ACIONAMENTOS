@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Calendar, FileText, RefreshCw, RotateCcw, Search, SlidersHorizontal, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AcionamentoListRow } from '../components/AcionamentoListRow';
+import { ACIONAMENTO_PAGE_SIZE, PaginationControls } from '../components/PaginationControls';
 import { STATUS_OPTIONS } from '../config/defaultCatalog';
 import { BUTTON_VARIANTS, SURFACE_TOKENS } from '../design/tokens';
 import type {
@@ -21,6 +22,7 @@ import {
   getUniqueOperators,
   groupAcionamentosByDate,
   hasValidInc,
+  isIncRequiredForStatus,
 } from '../utils/validation';
 
 interface HistoricoPageProps {
@@ -138,11 +140,29 @@ export function HistoricoPage({
   const hasFilters = activeFilterCount > 0;
 
   const missingIncInResult = useMemo(
-    () => filtered.filter((item) => !hasValidInc(item.inc)).length,
+    () =>
+      filtered.filter(
+        (item) => isIncRequiredForStatus(item.statusOperacional) && !hasValidInc(item.inc)
+      ).length,
     [filtered]
   );
 
   const dayGroups = useMemo(() => groupAcionamentosByDate(filtered), [filtered]);
+  const [currentPage, setCurrentPage] = useState(0);
+
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [filtered]);
+
+  const pageItems = useMemo(
+    () =>
+      filtered.slice(
+        currentPage * ACIONAMENTO_PAGE_SIZE,
+        (currentPage + 1) * ACIONAMENTO_PAGE_SIZE
+      ),
+    [filtered, currentPage]
+  );
+  const pageGroups = useMemo(() => groupAcionamentosByDate(pageItems), [pageItems]);
 
   const yesterdayIso = useMemo(() => {
     const [y, m, d] = todayIso.split('-').map(Number);
@@ -599,11 +619,14 @@ export function HistoricoPage({
             </section>
           ) : (
             <div className="space-y-6" aria-label="Lista de ocorrências agrupadas por dia">
-              {dayGroups.map((group, idx) => {
+              {pageGroups.map((group, idx) => {
                 const dayLabel = formatDayDividerLabelBR(group.dateIso);
                 const isToday = group.dateIso === todayIso;
                 const isYesterday = group.dateIso === yesterdayIso;
-                const dayMissingInc = group.items.filter((item) => !hasValidInc(item.inc)).length;
+                const dayMissingInc = group.items.filter(
+                  (item) =>
+                    isIncRequiredForStatus(item.statusOperacional) && !hasValidInc(item.inc)
+                ).length;
 
                 return (
                   <motion.section
@@ -680,11 +703,17 @@ export function HistoricoPage({
             </div>
           )}
 
+          <PaginationControls
+            page={currentPage}
+            totalItems={filtered.length}
+            onPageChange={setCurrentPage}
+          />
+
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#5c6c75] px-1">
             <div className="flex items-center gap-3">
               <span className="tabular-nums font-medium text-[#3e4e57]">
-                {filtered.length}{' '}
-                {filtered.length === 1 ? 'ocorrência exibida' : 'ocorrências exibidas'}
+                {pageItems.length} de {filtered.length}{' '}
+                {filtered.length === 1 ? 'ocorrência exibida' : 'ocorrências'}
                 {dayGroups.length > 0 && (
                   <>
                     {' '}

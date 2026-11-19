@@ -129,7 +129,12 @@ export function AcionamentoDetailPage({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 text-xs text-[#64737C]">
-            <IncBadge inc={record.inc} onNotify={onNotify} size="md" />
+            <IncBadge
+              inc={record.inc}
+              status={record.statusOperacional}
+              onNotify={onNotify}
+              size="md"
+            />
             <span aria-hidden="true">·</span>
             <span>{formatDateBR(record.dataRegistro)}</span>
             <span aria-hidden="true">·</span>
@@ -273,6 +278,16 @@ export function AcionamentoDetailPage({
                   {record.tipoLocalidade}
                 </div>
               </div>
+              {record.nomeLocalidade && (
+                <div>
+                  <div className="text-xs text-[#64737C]">
+                    {record.tipoLocalidade === 'Pátio' ? 'Nome do pátio' : 'Nome da estação'}
+                  </div>
+                  <div className="text-sm font-semibold text-[#162229] mt-0.5">
+                    {record.nomeLocalidade}
+                  </div>
+                </div>
+              )}
               <div>
                 <div className="text-xs text-[#64737C]">KM Ferroviário</div>
                 <div className="text-sm font-mono font-semibold text-[#162229] mt-0.5">
@@ -369,7 +384,7 @@ export function AcionamentoDetailPage({
               <div>
                 <div className="text-xs text-[#64737C]">INC</div>
                 <div className="mt-1">
-                  <IncBadge inc={record.inc} onNotify={onNotify} />
+                  <IncBadge inc={record.inc} status={record.statusOperacional} onNotify={onNotify} />
                 </div>
               </div>
             </div>

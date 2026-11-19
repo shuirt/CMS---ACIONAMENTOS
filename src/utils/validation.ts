@@ -31,8 +31,8 @@ export function hasValidInc(inc: string | null | undefined): boolean {
   return !EMPTY_INC_PLACEHOLDERS.has(normalized);
 }
 
-export function isIncRequiredForStatus(_status: StatusOperacional): boolean {
-  return false;
+export function isIncRequiredForStatus(status: StatusOperacional): boolean {
+  return !['Sem atendimento', 'Cancelado', 'Informação'].includes(status);
 }
 
 export function applyQuemAcionouShortcut(
@@ -198,6 +198,7 @@ export function getRelativeDateRange(
 
 export function sanitizeAcionamentoInput(raw: Partial<AcionamentoInput>): AcionamentoInput {
   const techUsed = Boolean(raw.tecnologiaEmpregada);
+  const tipoLocalidade = (raw.tipoLocalidade ?? 'Linha Férrea') as TipoLocalidade;
   return {
     dataRegistro: (raw.dataRegistro ?? '').trim(),
     dataFim: (raw.dataFim ?? '').trim(),
@@ -206,7 +207,11 @@ export function sanitizeAcionamentoInput(raw: Partial<AcionamentoInput>): Aciona
     horarioChegadaCampo: (raw.horarioChegadaCampo ?? '').trim(),
     horarioNormalizacao: (raw.horarioNormalizacao ?? '').trim(),
     quemAcionou: (raw.quemAcionou ?? '').trim(),
-    tipoLocalidade: (raw.tipoLocalidade ?? 'Linha Férrea') as TipoLocalidade,
+    tipoLocalidade,
+    nomeLocalidade:
+      tipoLocalidade === 'Pátio' || tipoLocalidade === 'Estação'
+        ? (raw.nomeLocalidade ?? '').trim()
+        : '',
     kmFerroviario: (raw.kmFerroviario ?? '').trim(),
     housingRh: (raw.housingRh ?? '').trim(),
     municipio: (raw.municipio ?? '').trim(),
@@ -514,11 +519,7 @@ export function filterAcionamentos(
   const ordered = sortOrder === 'asc' ? sortAcionamentosAsc(items) : sortAcionamentosDesc(items);
 
   return ordered.filter((item) => {
-    if (
-      tab === 'aberto' &&
-      item.statusOperacional !== 'Report' &&
-      item.statusOperacional !== 'Em andamento'
-    ) {
+    if (tab === 'aberto' && item.statusOperacional !== 'Em andamento') {
       return false;
     }
     if (tab === 'encerrado' && item.statusOperacional !== 'Encerrado') {
@@ -527,7 +528,10 @@ export function filterAcionamentos(
     if (incFilter === 'com_inc' && !hasValidInc(item.inc)) {
       return false;
     }
-    if (incFilter === 'sem_inc' && hasValidInc(item.inc)) {
+    if (
+      incFilter === 'sem_inc' &&
+      (!isIncRequiredForStatus(item.statusOperacional) || hasValidInc(item.inc))
+    ) {
       return false;
     }
     if (statusFilter !== 'Todos' && item.statusOperacional !== statusFilter) {
@@ -582,8 +586,13 @@ export function filterAcionamentos(
       item.materialAtivos,
       item.municipio,
       item.kmFerroviario,
-      hasValidInc(item.inc) ? item.inc : 'sem inc',
+      hasValidInc(item.inc)
+        ? item.inc
+        : isIncRequiredForStatus(item.statusOperacional)
+          ? 'sem inc'
+          : '',
       item.housingRh,
+      item.nomeLocalidade,
       item.quemAcionou,
       item.equipeCampo,
       item.vigilantes,
@@ -792,14 +801,20 @@ export function computeShiftSummary(
 
 export function formatAcionamentoClipboardText(record: Acionamento): string {
   const title = buildAcionamentoTitle(record);
-  const incLabel = hasValidInc(record.inc) ? record.inc : 'Sem INC';
+  const incLine = hasValidInc(record.inc)
+    ? `INC: ${record.inc}${record.numeroReport !== null ? ` · REPORT #${record.numeroReport}` : ''}`
+    : isIncRequiredForStatus(record.statusOperacional)
+      ? `INC: Sem INC${record.numeroReport !== null ? ` · REPORT #${record.numeroReport}` : ''}`
+      : record.numeroReport !== null
+        ? `REPORT #${record.numeroReport}`
+        : '';
   const lines = [
     `ACIONAMENTO CMS — ${title}`,
-    `INC: ${incLabel}${record.numeroReport !== null ? ` · REPORT #${record.numeroReport}` : ''}`,
+    ...(incLine ? [incLine] : []),
     `Data início: ${formatDateBR(record.dataRegistro)}${record.dataFim ? ` · Data fim: ${formatDateBR(record.dataFim)}` : ''} · Acionamento: ${record.horarioAcionamento}`,
     `Status: ${record.statusOperacional} · Operador CMS: ${record.createdByName || '—'}`,
     `Quem acionou: ${record.quemAcionou} · Equipe: ${record.equipeCampo}${record.vigilantes ? ` · Vigilante(s): ${record.vigilantes}` : ''}`,
-    `Localidade: ${record.tipoLocalidade} · ${record.municipio || '—'} · ${record.kmFerroviario || '—'}${record.housingRh ? ` (${record.housingRh})` : ''}`,
+    `Localidade: ${record.tipoLocalidade}${record.nomeLocalidade ? ` · ${record.nomeLocalidade}` : ''} · ${record.municipio || '—'} · ${record.kmFerroviario || '—'}${record.housingRh ? ` (${record.housingRh})` : ''}`,
   ];
 
   if (record.analistaResponsavel) {
@@ -823,6 +838,7 @@ const FIELD_LABELS: Record<keyof AcionamentoInput, string> = {
   horarioNormalizacao: 'Saída do local',
   quemAcionou: 'Quem acionou',
   tipoLocalidade: 'Tipo de localidade',
+  nomeLocalidade: 'Nome do pátio/estação',
   kmFerroviario: 'KM ferroviário',
   housingRh: 'Housing / RH',
   municipio: 'Município',

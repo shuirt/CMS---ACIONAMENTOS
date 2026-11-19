@@ -4,6 +4,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  BarChart3,
   Calendar,
   FileText,
   History,
@@ -15,6 +16,8 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { AcionamentoListRow } from '../components/AcionamentoListRow';
+import { ACIONAMENTO_PAGE_SIZE, PaginationControls } from '../components/PaginationControls';
+import { TechnologyUsageChart } from '../components/TechnologyUsageChart';
 import { BUTTON_VARIANTS, SURFACE_TOKENS } from '../design/tokens';
 import type {
   Acionamento,
@@ -32,6 +35,7 @@ import {
   getUniqueOperators,
   groupAcionamentosByDate,
   hasValidInc,
+  isIncRequiredForStatus,
   isValidIsoDate,
 } from '../utils/validation';
 
@@ -43,6 +47,7 @@ interface RegistrosPageProps {
   syncedAt: string;
   isDemoMode?: boolean;
   activeTab: RegistrosTab;
+  initialContinuousMode?: boolean;
   incFilter: IncFilter;
   search: string;
   operatorFilter: string;
@@ -72,6 +77,7 @@ export function RegistrosPage({
   syncedAt,
   isDemoMode = false,
   activeTab,
+  initialContinuousMode,
   incFilter,
   search,
   operatorFilter,
@@ -87,12 +93,15 @@ export function RegistrosPage({
   onNotify,
 }: RegistrosPageProps) {
   const [internalDateFilter, setInternalDateFilter] = useState<RegistrosDateFilter>('hoje');
+  const [activeRecordsView, setActiveRecordsView] = useState<'records' | 'technology'>('records');
   const dateFilter = propDateFilter ?? internalDateFilter;
   const setDateFilter = onDateFilterChange ?? setInternalDateFilter;
 
-  // Chronological ascending order (oldest on top, newest at bottom) as default
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [continuousMode, setContinuousMode] = useState(false);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [continuousMode, setContinuousMode] = useState(
+    initialContinuousMode ?? false
+  );
+  const [currentPage, setCurrentPage] = useState(0);
   const [isNearBottom, setIsNearBottom] = useState(false);
   const [activeDateIso, setActiveDateIso] = useState<string>('');
 
@@ -183,7 +192,9 @@ export function RegistrosPage({
       dateExact: continuousMode ? undefined : targetDateIso,
     });
     const comInc = base.filter((i) => hasValidInc(i.inc)).length;
-    const semInc = base.length - comInc;
+    const semInc = base.filter(
+      (item) => isIncRequiredForStatus(item.statusOperacional) && !hasValidInc(item.inc)
+    ).length;
     return { total: base.length, comInc, semInc };
   }, [acionamentos, activeTab, search, operatorFilter, continuousMode, targetDateIso]);
 
@@ -204,13 +215,26 @@ export function RegistrosPage({
     return acionamentos.filter(
       (a) =>
         a.dataRegistro === yesterdayIso &&
-        (a.statusOperacional === 'Em andamento' || a.statusOperacional === 'Report')
+        a.statusOperacional === 'Em andamento'
     ).length;
   }, [acionamentos, yesterdayIso]);
 
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [filteredItems]);
+
+  const pageItems = useMemo(
+    () =>
+      filteredItems.slice(
+        currentPage * ACIONAMENTO_PAGE_SIZE,
+        (currentPage + 1) * ACIONAMENTO_PAGE_SIZE
+      ),
+    [filteredItems, currentPage]
+  );
+
   const timelineGroups = useMemo(
-    () => (continuousMode ? groupAcionamentosByDate(filteredItems) : []),
-    [continuousMode, filteredItems]
+    () => (continuousMode ? groupAcionamentosByDate(pageItems) : []),
+    [continuousMode, pageItems]
   );
 
   const pendingReportsCount = useMemo(
@@ -219,7 +243,10 @@ export function RegistrosPage({
   );
 
   const missingIncCount = useMemo(
-    () => filteredItems.filter((item) => !hasValidInc(item.inc)).length,
+    () =>
+      filteredItems.filter(
+        (item) => isIncRequiredForStatus(item.statusOperacional) && !hasValidInc(item.inc)
+      ).length,
     [filteredItems]
   );
 
@@ -315,7 +342,7 @@ export function RegistrosPage({
     operatorFilter !== 'Todos' ||
     incFilter !== 'todos' ||
     dateFilter !== 'hoje' ||
-    sortOrder !== 'asc'
+    sortOrder !== 'desc'
   );
 
   const clearAllFilters = () => {
@@ -323,7 +350,7 @@ export function RegistrosPage({
     onOperatorFilterChange('Todos');
     onIncFilterChange('todos');
     setDateFilter('hoje');
-    setSortOrder('asc');
+    setSortOrder('desc');
   };
 
   const renderAcionamentoRow = (item: Acionamento, showFullDateInSubtitle: boolean) => (
@@ -339,7 +366,43 @@ export function RegistrosPage({
   return (
     <div className={SURFACE_TOKENS.pageContainer}>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div
+          role="tablist"
+          aria-label="Visualização de registros"
+          className="lg:col-span-12 flex gap-2"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeRecordsView === 'records'}
+            onClick={() => setActiveRecordsView('records')}
+            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-colors ${
+              activeRecordsView === 'records'
+                ? 'bg-[#005C59] border-[#005C59] text-white shadow-xs'
+                : 'bg-white border-[#D4DFE4] text-[#52636D] hover:text-[#162229]'
+            }`}
+          >
+            <FileText className="w-4 h-4" aria-hidden="true" />
+            Registros
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeRecordsView === 'technology'}
+            onClick={() => setActiveRecordsView('technology')}
+            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-colors ${
+              activeRecordsView === 'technology'
+                ? 'bg-[#005C59] border-[#005C59] text-white shadow-xs'
+                : 'bg-white border-[#D4DFE4] text-[#52636D] hover:text-[#162229]'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" aria-hidden="true" />
+            Gráficos
+          </button>
+        </div>
+
         {/* Left Sidebar: Header, Buttons & Filters */}
+        {activeRecordsView === 'records' && (
         <aside className="lg:col-span-4 lg:sticky lg:top-20 space-y-4">
           <div className="bg-white border border-[#D4DFE4] rounded-2xl p-5 shadow-2xs space-y-5">
             {/* Title & Action */}
@@ -452,13 +515,13 @@ export function RegistrosPage({
 
                 <button
                   type="button"
-                  aria-pressed={dateFilter === 'todas' && continuousMode}
+                  aria-pressed={dateFilter === 'todas'}
                   onClick={() => {
                     setContinuousMode(true);
                     setDateFilter('todas');
                   }}
                   className={`flex flex-col items-center justify-center px-2 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                    dateFilter === 'todas' && continuousMode
+                    dateFilter === 'todas'
                       ? 'bg-white text-[#162229] font-semibold shadow-xs'
                       : 'text-[#52636D] hover:text-[#162229]'
                   }`}
@@ -628,9 +691,14 @@ export function RegistrosPage({
             </div>
           </div>
         </aside>
+        )}
 
         {/* Right Main Column: Alerts & Records List */}
-        <main className="lg:col-span-8 space-y-4 min-w-0">
+        <main className={`${activeRecordsView === 'technology' ? 'lg:col-span-12' : 'lg:col-span-8'} space-y-4 min-w-0`}>
+          {activeRecordsView === 'technology' ? (
+            <TechnologyUsageChart acionamentos={acionamentos} loading={loading} />
+          ) : (
+          <>
           {/* Handover Alert: Open items from yesterday when viewing Hoje */}
           {pendingYesterdayCount > 0 && dateFilter === 'hoje' && !continuousMode && (
             <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-2 bg-[#FEF6E3] border border-[#F3D085] rounded-xl text-xs text-[#8A5602] shadow-2xs">
@@ -840,7 +908,10 @@ export function RegistrosPage({
                     const isToday = group.dateIso === todayIso;
                     const isYesterday = group.dateIso === yesterdayIso;
                     const dayLabel = formatShortDayHeaderBR(group.dateIso, todayIso);
-                    const dayMissingInc = group.items.filter((item) => !hasValidInc(item.inc)).length;
+                    const dayMissingInc = group.items.filter(
+                      (item) =>
+                        isIncRequiredForStatus(item.statusOperacional) && !hasValidInc(item.inc)
+                    ).length;
 
                     return (
                       <section
@@ -974,17 +1045,23 @@ export function RegistrosPage({
                 transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
                 className="space-y-3"
               >
-                {filteredItems.map((item) => renderAcionamentoRow(item, true))}
+                {pageItems.map((item) => renderAcionamentoRow(item, true))}
               </motion.div>
             )}
           </section>
+
+          <PaginationControls
+            page={currentPage}
+            totalItems={filteredItems.length}
+            onPageChange={setCurrentPage}
+          />
 
           {/* Quiet Metrics Footer */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 pt-0.5">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[#5c6c75] text-[12px] leading-[18px]">
               <span>
-                Exibindo <strong>{filteredItems.length}</strong> de{' '}
-                <strong>{acionamentos.length}</strong> registros
+                Exibindo <strong>{pageItems.length}</strong> de{' '}
+                <strong>{filteredItems.length}</strong> resultados
               </span>
               <span aria-hidden="true">·</span>
               <span>
@@ -1010,6 +1087,8 @@ export function RegistrosPage({
               </button>
             </div>
           </div>
+          </>
+          )}
         </main>
       </div>
     </div>

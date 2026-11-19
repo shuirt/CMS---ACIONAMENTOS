@@ -29,6 +29,7 @@ test('Acionamento row serialization and deserialization round-trips losslessly',
     horarioNormalizacao: '',
     quemAcionou: 'Jocimar (CCS VLI)',
     tipoLocalidade: 'Pátio',
+    nomeLocalidade: 'Pátio Central',
     kmFerroviario: 'KM 12+400',
     housingRh: 'EH01/04',
     municipio: 'Vitória (ES)',
@@ -61,10 +62,16 @@ test('Acionamento row serialization and deserialization round-trips losslessly',
   assert.equal(legacy28?.equipeCampo, 'Motorizado BH');
   assert.equal(legacy28?.vigilantes, '');
   assert.equal(legacy28?.dataFim, '');
+  assert.equal(legacy28?.nomeLocalidade, '');
 
   const legacy29 = deserializeAcionamentoRow(row.slice(0, 29));
   assert.equal(legacy29?.vigilantes, 'Bruno Alves, Marcos Souza');
   assert.equal(legacy29?.dataFim, '');
+  assert.equal(legacy29?.nomeLocalidade, '');
+
+  const legacy30 = deserializeAcionamentoRow(row.slice(0, 30));
+  assert.equal(legacy30?.dataFim, '2026-11-16');
+  assert.equal(legacy30?.nomeLocalidade, '');
 });
 
 test('Config and Auditoria row serialization round-trip properly', () => {
